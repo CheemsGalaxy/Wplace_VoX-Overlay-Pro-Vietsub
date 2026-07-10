@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         Wplace Overlay Pro Modified By @SrCratier
 // @namespace    http://tampermonkey.net/
-// @version      5.2.5
-// @description  Overlays tiles on wplace.live. Can also resize, and color-match your overlay to wplace's palette. Make sure to comply with the site's Terms of Service, and rules! This script is not affiliated with Wplace.live in any way, use at your own risk. This script is not affiliated with TamperMonkey. The author of this userscript is not responsible for any damages, issues, loss of data, or punishment that may occur as a result of using this script. This script is provided "as is" under GPLv3.
+// @version      5.3.0
+// @description  Overlays tiles on wplace.live. Can also resize, and color-match your overlay to wplace's palette. Make sure to comply with the site's Terms of Service, and rules! This script is not affiliated with Wplace.live in any way, use at your risk. This script is not affiliated with TamperMonkey. The author of this userscript is not responsible for any damages, issues, loss of data, or punishment that may occur as a result of using this script. This script is provided "as is" under GPLv3.
 // @author       shinkonet (Modificado por @SrCratier)
 // @updateURL    https://raw.githubusercontent.com/SrCratier/Wplace_VoX-Overlay-Pro/main/WplacePro-VoX.user.js
 // @downloadURL  https://raw.githubusercontent.com/SrCratier/Wplace_VoX-Overlay-Pro/main/WplacePro-VoX.user.js
@@ -105,7 +105,10 @@
     [109,100,63], [148,140,107], [205,197,158],
     [51,57,65], [109,117,141], [179,185,209]
   ];
-    const WPLACE_NAMES = {
+
+  const FULL_PALETTE = [...WPLACE_FREE, ...WPLACE_PAID];
+
+  const WPLACE_NAMES = {
     "0,0,0":"Black","60,60,60":"Dark Gray","120,120,120":"Gray","210,210,210":"Light Gray","255,255,255":"White", "170,170,170":"Medium Gray",
     "96,0,24":"Deep Red","237,28,36":"Red","255,127,39":"Orange","246,170,9":"Gold","249,221,59":"Yellow","255,250,188":"Light Yellow",
     "14,185,104":"Dark Green","19,230,123":"Green","135,255,94":"Light Green",
@@ -126,22 +129,37 @@
     "109,100,63":"Dark Stone","148,140,107":"Stone","205,197,158":"Light Stone",
     "51,57,65":"Dark Slate","109,117,141":"Slate","179,185,209":"Light Slate"
   };
+
+  function getPaletteColorId(r, g, b) {
+      let minDistance = Infinity;
+      let bestId = 0;
+      for (let i = 0; i < FULL_PALETTE.length; i++) {
+          const pr = FULL_PALETTE[i][0], pg = FULL_PALETTE[i][1], pb = FULL_PALETTE[i][2];
+          const rmean = (r + pr) / 2;
+          const dr = r - pr;
+          const dg = g - pg;
+          const db = b - pb;
+          const dist = (((512 + rmean) * dr * dr) >> 8) + (4 * dg * dg) + (((767 - rmean) * db * db) >> 8);
+          if (dist < minDistance) { minDistance = dist; bestId = i; }
+          if (dist === 0) break;
+      }
+      return bestId;
+  }
+
   const DEFAULT_FREE_KEYS = WPLACE_FREE.map(([r,g,b]) => `${r},${g},${b}`);
   const DEFAULT_PAID_KEYS = [];
   const page = unsafeWindow;
 
-    let lastKnownAvailableColors = new Set();
+  let lastKnownAvailableColors = new Set();
 
-const DONATORS = [
-
-{ name: "kleyder1205 ", contribution: "- Donó 5 USD   :D ❤️" },
-{ name: "Nuntius ", contribution: "- Donó 5 USD   :D ❤️" },
-{ name: "espressos work ", contribution: "- Donó 5 USD   :D ❤️" },
-
-];
+  const DONATORS = [
+    { name: "kleyder1205 ", contribution: "- Donó 5 USD   :D ❤️" },
+    { name: "Nuntius ", contribution: "- Donó 5 USD   :D ❤️" },
+    { name: "espressos work ", contribution: "- Donó 5 USD   :D ❤️" },
+  ];
 
   function uid() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`; }
-      function debounce(func, wait) {
+  function debounce(func, wait) {
       let timeout;
       return function executedFunction(...args) {
           const later = () => {
@@ -204,6 +222,7 @@ const DONATORS = [
   }
 
   const overlayCache = new Map();
+  const imageAnalysisCache = new Map();
   const tooLargeOverlays = new Set();
 
   function overlaySignature(ov) {
@@ -212,30 +231,72 @@ const DONATORS = [
   }
   function clearOverlayCache() { overlayCache.clear(); }
 
+  async function getOrBuildOverlayCache(ov) {
+      let cache = imageAnalysisCache.get(ov.id);
+      if (cache && cache.base64 === ov.imageBase64) return cache;
+
+      const img = await loadImage(ov.imageBase64);
+      const canvas = createHTMLCanvas(img.width, img.height);
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.drawImage(img, 0, 0);
+      const data = ctx.getImageData(0, 0, img.width, img.height).data;
+
+      const colorIds = new Uint8Array(img.width * img.height);
+      const neededCounts = {};
+      const fastColorCache = new Map();
+
+      for (let i = 0; i < data.length; i += 4) {
+          const pxIdx = i / 4;
+          if (data[i + 3] < 128) {
+              colorIds[pxIdx] = 255;
+              continue;
+          }
+          const r = data[i], g = data[i+1], b = data[i+2];
+          const rawKey = (r << 16) | (g << 8) | b;
+
+          let bestId = fastColorCache.get(rawKey);
+          if (bestId === undefined) {
+              bestId = getPaletteColorId(r, g, b);
+              fastColorCache.set(rawKey, bestId);
+          }
+
+          colorIds[pxIdx] = bestId;
+          neededCounts[bestId] = (neededCounts[bestId] || 0) + 1;
+      }
+
+      cache = { base64: ov.imageBase64, width: img.width, height: img.height, colorIds, neededCounts };
+      imageAnalysisCache.set(ov.id, cache);
+
+      if (ov.cachedColorData) delete ov.cachedColorData;
+
+      return cache;
+  }
+
   async function buildOverlayDataForChunk(ov, targetChunk1, targetChunk2, originalTileImageData = null) {
     if (!ov.enabled || !ov.imageBase64 || !ov.pixelUrl) return null;
     if (tooLargeOverlays.has(ov.id)) return null;
     const sig = overlaySignature(ov);
     const cacheKey = `${ov.id}|${sig}|${targetChunk1}|${targetChunk2}|errors=${config.showErrors}|filter=${ov.filterActive}`;
     if (overlayCache.has(cacheKey)) return overlayCache.get(cacheKey);
-    const img = await loadImage(ov.imageBase64);
-    if (!img) return null;
-    const wImg = img.width, hImg = img.height;
+
+    const cacheData = await getOrBuildOverlayCache(ov);
+    const wImg = cacheData.width, hImg = cacheData.height;
+
     if (wImg >= MAX_OVERLAY_DIM || hImg >= MAX_OVERLAY_DIM) {
       tooLargeOverlays.add(ov.id);
-      showToast(`Overlay "${ov.name}" skipped: image too large (must be smaller than ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM}; got ${wImg}×${hImg}).`);
+      showToast(`Overlay "${ov.name}" skipped: image too large.`);
       return null;
     }
+
     const base = extractPixelCoords(ov.pixelUrl);
     if (!Number.isFinite(base.chunk1) || !Number.isFinite(base.chunk2)) return null;
+
     const drawX = (base.chunk1 * TILE_SIZE + base.posX + ov.offsetX) - (targetChunk1 * TILE_SIZE);
     const drawY = (base.chunk2 * TILE_SIZE + base.posY + ov.offsetY) - (targetChunk2 * TILE_SIZE);
     const isect = rectIntersect(0, 0, TILE_SIZE, TILE_SIZE, drawX, drawY, wImg, hImg);
     if (isect.w === 0 || isect.h === 0) { overlayCache.set(cacheKey, null); return null; }
-    const canvas = createCanvas(TILE_SIZE, TILE_SIZE);
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(img, drawX, drawY);
-    const imageData = ctx.getImageData(isect.x, isect.y, isect.w, isect.h);
+
+    const imageData = new ImageData(isect.w, isect.h);
     const data = imageData.data;
     const colorStrength = ov.opacity;
     const whiteStrength = 1 - colorStrength;
@@ -244,62 +305,56 @@ const DONATORS = [
     const filterSet = (ov.filterActive && ov.savedFilters) ? new Set(ov.savedFilters) : null;
 
     for (let i = 0; i < data.length; i += 4) {
-        if (data[i + 3] === 0) {
-            continue;
-        }
+      const currentX = isect.x + (i / 4) % isect.w;
+      const currentY = isect.y + Math.floor((i / 4) / isect.w);
 
-        const r_ov = data[i], g_ov = data[i + 1], b_ov = data[i + 2];
-        if (filterSet && !filterSet.has(`${r_ov},${g_ov},${b_ov}`)) {
-            data[i + 3] = 0;
-            continue;
-        }
+      const ovLocX = currentX - drawX;
+      const ovLocY = currentY - drawY;
+      const ovId = cacheData.colorIds[ovLocY * wImg + ovLocX];
 
-        const currentX = isect.x + (i / 4) % isect.w;
-        const currentY = isect.y + Math.floor((i / 4) / isect.w);
-        const originalIndex = (currentY * TILE_SIZE + currentX) * 4;
+      if (ovId === 255) continue;
 
-        if (isErrorCheckMode && originalTileImageData) {
-            const r_orig = originalTileImageData.data[originalIndex];
-            const g_orig = originalTileImageData.data[originalIndex + 1];
-            const b_orig = originalTileImageData.data[originalIndex + 2];
-            const a_orig = originalTileImageData.data[originalIndex + 3];
-            const ovSum = r_ov + g_ov + b_ov;
-            let isMatch = false;
+      const targetColor = FULL_PALETTE[ovId];
+      const r_ov = targetColor[0], g_ov = targetColor[1], b_ov = targetColor[2];
 
-            if (ovSum < 10) {
-                 const mapSum = r_orig + g_orig + b_orig;
-                 isMatch = (a_orig > 200) && (mapSum < 10);
-            } else {
-                 isMatch = (a_orig > 100) && (r_ov === r_orig && g_ov === g_orig && b_ov === b_orig);
-            }
-            if (isMatch) {
-                data[i + 3] = 0;
-            } else {
-                const alpha = 0.6;
-                data[i] = Math.round(r_ov * (1 - alpha) + 255 * alpha);
-                data[i + 1] = Math.round(g_ov * (1 - alpha) + 0 * alpha);
-                data[i + 2] = Math.round(b_ov * (1 - alpha) + 255 * alpha);
-                data[i + 3] = 255;
-            }
-        } else if (config.highlightMissing && originalTileImageData) {
-            const r_orig = originalTileImageData.data[originalIndex];
-            const g_orig = originalTileImageData.data[originalIndex + 1];
-            const b_orig = originalTileImageData.data[originalIndex + 2];
-            const isMatch = r_ov === r_orig && g_ov === g_orig && b_ov === b_orig;
-            if (isMatch) {
-                data[i + 3] = 0;
-            } else {
-                data[i] = 0;
-                data[i + 1] = 255;
-                data[i + 2] = 255;
-                data[i + 3] = 150;
-            }
-        } else {
-            data[i] = Math.round(data[i] * colorStrength + 255 * whiteStrength);
-            data[i + 1] = Math.round(data[i + 1] * colorStrength + 255 * whiteStrength);
-            data[i + 2] = Math.round(data[i + 2] * colorStrength + 255 * whiteStrength);
-            data[i + 3] = 255;
-        }
+      if (filterSet && !filterSet.has(`${r_ov},${g_ov},${b_ov}`)) continue;
+
+      const originalIndex = (currentY * TILE_SIZE + currentX) * 4;
+
+      if (isErrorCheckMode && originalTileImageData) {
+          const r_orig = originalTileImageData.data[originalIndex];
+          const g_orig = originalTileImageData.data[originalIndex + 1];
+          const b_orig = originalTileImageData.data[originalIndex + 2];
+          const a_orig = originalTileImageData.data[originalIndex + 3];
+          const ovSum = r_ov + g_ov + b_ov;
+          let isMatch = false;
+
+          if (ovSum < 10) {
+               const mapSum = r_orig + g_orig + b_orig;
+               isMatch = (a_orig > 200) && (mapSum < 10);
+          } else {
+               isMatch = (a_orig > 100) && (r_ov === r_orig && g_ov === g_orig && b_ov === b_orig);
+          }
+          if (isMatch) continue;
+
+          const alpha = 0.6;
+          data[i] = Math.round(r_ov * (1 - alpha) + 255 * alpha);
+          data[i + 1] = Math.round(g_ov * (1 - alpha) + 0 * alpha);
+          data[i + 2] = Math.round(b_ov * (1 - alpha) + 255 * alpha);
+          data[i + 3] = 255;
+      } else if (config.highlightMissing && originalTileImageData) {
+          const r_orig = originalTileImageData.data[originalIndex];
+          const g_orig = originalTileImageData.data[originalIndex + 1];
+          const b_orig = originalTileImageData.data[originalIndex + 2];
+          if (r_ov === r_orig && g_ov === g_orig && b_ov === b_orig) continue;
+
+          data[i] = 0; data[i + 1] = 255; data[i + 2] = 255; data[i + 3] = 150;
+      } else {
+          data[i] = Math.round(r_ov * colorStrength + 255 * whiteStrength);
+          data[i + 1] = Math.round(g_ov * colorStrength + 255 * whiteStrength);
+          data[i + 2] = Math.round(b_ov * colorStrength + 255 * whiteStrength);
+          data[i + 3] = 255;
+      }
     }
     const result = { imageData, dx: isect.x, dy: isect.y };
     overlayCache.set(cacheKey, result);
@@ -366,35 +421,32 @@ const DONATORS = [
     const cacheKey = `${ov.id}|${sig}|minify|s${scale}|${targetChunk1}|${targetChunk2}|errors=${config.showErrors}|filter=${ov.filterActive}`;
     if (overlayCache.has(cacheKey)) return overlayCache.get(cacheKey);
 
-    const img = await loadImage(ov.imageBase64);
-    if (!img) return null;
-    const wImg = img.width, hImg = img.height;
+    const cacheData = await getOrBuildOverlayCache(ov);
+    const wImg = cacheData.width, hImg = cacheData.height;
+
     if (wImg >= MAX_OVERLAY_DIM || hImg >= MAX_OVERLAY_DIM) {
       tooLargeOverlays.add(ov.id);
-      showToast(`Overlay "${ov.name}" skipped: image too large (must be smaller than ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM}; got ${wImg}×${hImg}).`);
+      showToast(`Overlay "${ov.name}" skipped: image too large.`);
       return null;
     }
+
     const base = extractPixelCoords(ov.pixelUrl);
     if (!Number.isFinite(base.chunk1) || !Number.isFinite(base.chunk2)) return null;
 
     const drawX = (base.chunk1 * TILE_SIZE + base.posX + ov.offsetX) - (targetChunk1 * TILE_SIZE);
     const drawY = (base.chunk2 * TILE_SIZE + base.posY + ov.offsetY) - (targetChunk2 * TILE_SIZE);
+
     const tileW = TILE_SIZE * scale;
     const tileH = TILE_SIZE * scale;
     const drawXScaled = Math.round(drawX * scale);
     const drawYScaled = Math.round(drawY * scale);
     const wScaled = wImg * scale;
     const hScaled = hImg * scale;
+
     const isect = rectIntersect(0, 0, tileW, tileH, drawXScaled, drawYScaled, wScaled, hScaled);
     if (isect.w === 0 || isect.h === 0) { overlayCache.set(cacheKey, null); return null; }
 
-    const canvas = createCanvas(tileW, tileH);
-    const ctx = canvas.getContext('2d', { willReadFrequently: true });
-    ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, tileW, tileH);
-    ctx.drawImage(img, 0, 0, wImg, hImg, drawXScaled, drawYScaled, wScaled, hScaled);
-
-    const imageData = ctx.getImageData(isect.x, isect.y, isect.w, isect.h);
+    const imageData = new ImageData(isect.w, isect.h);
     const data = imageData.data;
     const colorStrength = ov.opacity;
     const whiteStrength = 1 - colorStrength;
@@ -406,25 +458,29 @@ const DONATORS = [
     const origH = Math.ceil(isect.h / scale);
     const errorCache = isErrorCheckMode ? new Uint8Array(origW * origH) : null;
     const errorCalculated = isErrorCheckMode ? new Uint8Array(origW * origH) : null;
-    
+
     const filterSet = (ov.filterActive && ov.savedFilters) ? new Set(ov.savedFilters) : null;
 
     for (let i = 0; i < data.length; i += 4) {
-      const r_ov = data[i], g_ov = data[i+1], b_ov = data[i+2], a = data[i+3];
-      if (a === 0) {
-        data[i+3] = 0;
-        continue;
-      }
-      const colorKey = `${r_ov},${g_ov},${b_ov}`;
-      if (filterSet && !filterSet.has(colorKey)) {
-          data[i+3] = 0;
-          continue;
-      }
-
       const px = (i / 4) % width;
       const py = Math.floor((i / 4) / width);
       const absX = isect.x + px;
       const absY = isect.y + py;
+
+      const originalLocalX = Math.floor(absX / scale) - drawX;
+      const originalLocalY = Math.floor(absY / scale) - drawY;
+
+      if (originalLocalX < 0 || originalLocalX >= wImg || originalLocalY < 0 || originalLocalY >= hImg) continue;
+
+      const ovId = cacheData.colorIds[originalLocalY * wImg + originalLocalX];
+      if (ovId === 255) continue;
+
+      const targetColor = FULL_PALETTE[ovId];
+      const r_ov = targetColor[0], g_ov = targetColor[1], b_ov = targetColor[2];
+      const colorKey = `${r_ov},${g_ov},${b_ov}`;
+
+      if (filterSet && !filterSet.has(colorKey)) continue;
+
       const relX = absX % scale;
       const relY = absY % scale;
       const shouldDrawPattern = getPattern(colorKey, relX, relY, center, scale);
@@ -454,22 +510,13 @@ const DONATORS = [
               errorCache[cacheIdx] = isMatch ? 1 : 0;
               errorCalculated[cacheIdx] = 1;
           }
-          
-          if (isMatch) {
-              data[i+3] = 0;
-              continue;
+
+          if (isMatch) continue;
+
+          if (shouldDrawPattern) {
+              data[i] = r_ov; data[i+1] = g_ov; data[i+2] = b_ov; data[i+3] = 255;
           } else {
-              if (shouldDrawPattern) {
-                  data[i] = r_ov;
-                  data[i+1] = g_ov;
-                  data[i+2] = b_ov;
-                  data[i+3] = 255;
-              } else {
-                  data[i] = 255;
-                  data[i+1] = 0;
-                  data[i+2] = 255;
-                  data[i+3] = 255;
-              }
+              data[i] = 255; data[i+1] = 0; data[i+2] = 255; data[i+3] = 255;
           }
       } else {
           if (shouldDrawPattern) {
@@ -477,8 +524,6 @@ const DONATORS = [
               data[i + 1] = Math.round(g_ov * colorStrength + 255 * whiteStrength);
               data[i + 2] = Math.round(b_ov * colorStrength + 255 * whiteStrength);
               data[i + 3] = 255;
-          } else {
-              data[i+3] = 0;
           }
       }
     }
@@ -625,7 +670,7 @@ function showToast(message, duration = 3000) {
     const originalFetch = NATIVE_FETCH;
     const hookedFetch = async (input, init) => {
         const urlStr = typeof input === 'string' ? input : (input && input.url) || '';
-        
+
         if (!urlStr.includes('backend.wplace.live')) return originalFetch(input, init);
 
         const pixelMatch = matchPixelUrl(urlStr);
@@ -777,8 +822,8 @@ function showToast(message, duration = 3000) {
     isColorPanelVisible: false,
     colorPanelX: null,
     colorPanelY: null,
-    colorPanelAlpha: 0.0,
-    panelAlpha: 0.8,
+    colorPanelAlpha: 0.85,
+    panelAlpha: 0.85,
     highlightMissing: false,
     caSortEnabled: true,
     caHighlightEnabled: true,
@@ -831,6 +876,13 @@ function showToast(message, duration = 3000) {
   async function loadConfig() {
     try {
       await Promise.all(CONFIG_KEYS.map(async k => { config[k] = await gmGet(k, config[k]); }));
+
+      if (Array.isArray(config.overlays)) {
+          config.overlays.forEach(ov => {
+              if (ov.cachedColorData) delete ov.cachedColorData;
+          });
+      }
+
       if (!Array.isArray(config.ccFreeKeys) || config.ccFreeKeys.length === 0) config.ccFreeKeys = DEFAULT_FREE_KEYS.slice();
       if (!Array.isArray(config.ccPaidKeys)) config.ccPaidKeys = DEFAULT_PAID_KEYS.slice();
       if (!Number.isFinite(config.ccZoom) || config.ccZoom <= 0) config.ccZoom = 1.0;
@@ -887,7 +939,8 @@ function injectStyles() {
       .op-toggle-btn:hover, .op-hdr-btn:hover { background: var(--op-btn); border-color: var(--op-accent); }
 
       .op-content { padding: 12px; display: flex; flex-direction: column; gap: 12px; }
-      .op-global-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+      .op-global-controls { display: flex; flex-wrap: wrap; gap: 8px; }
+      .op-global-controls > .op-button { flex: 1 1 calc(50% - 8px); text-align: center; justify-content: center; }
 
       .op-tabs { display: flex; border-bottom: 1px solid var(--op-border); }
       .op-tab-btn {
@@ -937,7 +990,6 @@ function injectStyles() {
 
       .op-input:focus, .op-select:focus { outline: none; border-color: var(--op-accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--op-accent) 25%, transparent); }
 
-      /* SLIDER STYLES */
       input[type="range"] { -webkit-appearance: none; appearance: none; width: 100%; background: transparent; cursor: pointer; }
       input[type="range"]:focus { outline: none; }
       input[type="range"]::-webkit-slider-runnable-track { height: 8px; background: linear-gradient(90deg, #ff7e5f, #8A2BE2); border-radius: 4px; }
@@ -1167,7 +1219,7 @@ function injectStyles() {
         transition: max-height 0.3s ease-in-out;
       }
       .op-donators-list-wrap.show {
-        max-height: 150px; /* Altura máxima para la lista */
+        max-height: 150px;
       }
       .op-donators-list {
         list-style: none;
@@ -1229,6 +1281,35 @@ function injectStyles() {
       }
       .op-option:hover { background: var(--op-btn-hover); color: var(--op-accent); }
       .op-option.selected { background: color-mix(in srgb, var(--op-accent) 15%, transparent); color: var(--op-accent); font-weight: 500; }
+      #overlay-pro-panel, .op-modal {
+          background: rgba(18, 18, 28, var(--op-panel-alpha, 0.85)) !important;
+      }
+      #overlay-pro-panel, .op-modal, #op-color-analysis-panel {
+          box-shadow: 0 10px 40px rgba(0,0,0,0.7), 0 0 0 1px rgba(138, 43, 226, 0.5) !important;
+          text-shadow: 0px 1px 3px rgba(0,0,0,0.9);
+          color: #e0e0e0 !important;
+      }
+      .op-header { text-shadow: 0px 2px 5px rgba(0,0,0,1); }
+      .op-section, .op-preview, .op-input, .op-select, .op-item, .op-ca-item {
+          background: rgba(0, 0, 0, 0.45) !important;
+          border-color: rgba(255, 255, 255, 0.1) !important;
+          color: #e0e0e0 !important;
+      }
+      .op-button {
+          background: rgba(31, 40, 51, 0.7) !important;
+          border-color: rgba(255, 255, 255, 0.15) !important;
+          color: #e0e0e0 !important;
+      }
+      .op-button:hover {
+          background: rgba(138, 43, 226, 0.6) !important;
+          border-color: rgba(138, 43, 226, 1) !important;
+      }
+      .op-button.op-danger {
+          background: rgba(138, 43, 226, 0.8) !important;
+          color: #ffffff !important;
+          text-shadow: none;
+      }
+      .op-muted { color: #a0a7b4 !important; }
 `;
     document.head.appendChild(style);
 }
@@ -1551,11 +1632,14 @@ function rebuildOverlayListUI() {
         <input type="radio" name="op-active" ${isActive ? 'checked' : ''} title="Establecer como activa"/>
         <input type="checkbox" ${ov.enabled ? 'checked' : ''} title="Activar/Desactivar"/>
         <div class="op-item-name" title="${title}">${title}</div>
-        <button class="op-icon-btn" title="Eliminar superposición">🗑️</button>
+        <button class="op-icon-btn op-trash-btn" title="Eliminar superposición">🗑️</button>
       </div>
     `;
 
-    const [radio, checkbox, nameDiv, trashBtn] = item.querySelector('.op-row').children;
+    const radio = item.querySelector('input[type="radio"]');
+    const checkbox = item.querySelector('input[type="checkbox"]');
+    const nameDiv = item.querySelector('.op-item-name');
+    const trashBtn = item.querySelector('.op-trash-btn');
 
     const selectThisOverlay = async () => {
         if (config.activeOverlayId !== ov.id) {
@@ -1595,7 +1679,7 @@ function rebuildOverlayListUI() {
 }
   async function addBlankOverlay() {
     const name = uniqueName('Overlay');
-    const ov = { id: uid(), name, enabled: true, imageUrl: null, imageBase64: null, isLocal: false, pixelUrl: null, offsetX: 0, offsetY: 0, opacity: 1.0 };
+    const ov = { id: uid(), name, enabled: true, imageUrl: null, imageBase64: null, isLocal: false, pixelUrl: null, offsetX: 0, offsetY: 0, opacity: 1.0, colorMode: 'standard' };
     config.overlays.push(ov);
     config.activeOverlayId = ov.id;
     await saveConfig(['overlays', 'activeOverlayId']);
@@ -1679,8 +1763,7 @@ async function processImageToPalette(base64, mode = 'standard') {
                         distributeError(1, 0, 1 / 8); distributeError(2, 0, 1 / 8); distributeError(-1, 1, 1 / 8); distributeError(0, 1, 1 / 8); distributeError(1, 1, 1 / 8); distributeError(0, 2, 1 / 8);
                     }
                 }
-                
-                // Devolvemos el buffer procesado al hilo principal
+
                 self.postMessage({ resultBuffer: data.buffer }, [data.buffer]);
             };
         `;
@@ -1925,17 +2008,19 @@ applyTheme();
     $('op-panel-toggle').addEventListener('click', (e) => { e.stopPropagation(); config.isPanelCollapsed = !config.isPanelCollapsed; saveConfig(['isPanelCollapsed']); updateUI(); });
 
     $('op-show-overlay-toggle').addEventListener('click', () => {
-        if (config.autoCapturePixelUrl) {
-            showToast('⚠️ No puedes apagar el Overlay mientras "Set Position" está activo.', 3000);
-            return;
-        }
-        if (config.isSettingCopyPoint) {
-            showToast('⚠️ No puedes apagar el Overlay mientras fijas un punto de copia.', 3000);
-            return;
-        }
-        if (config.copyPreviewActive) {
-            showToast('⚠️ Desactiva "Visualizar Área" primero para controlar el Overlay manualmente.', 3000);
-            return;
+        if (config.showOverlay) {
+            if (config.autoCapturePixelUrl) {
+                showToast('⚠️ No puedes apagar el Overlay mientras "Set Position" está activo.', 3000);
+                return;
+            }
+            if (config.isSettingCopyPoint) {
+                showToast('⚠️ No puedes apagar el Overlay mientras fijas un punto de copia.', 3000);
+                return;
+            }
+            if (config.copyPreviewActive) {
+                showToast('⚠️ Desactiva "Visualizar Área" primero para controlar el Overlay manualmente.', 3000);
+                return;
+            }
         }
 
         config.showOverlay = !config.showOverlay;
@@ -2063,7 +2148,8 @@ applyTheme();
         ov.offsetX += dx;
         ov.offsetY += dy;
 
-        updateUI();
+        const indicator = document.getElementById('op-offset-indicator');
+        if (indicator) indicator.textContent = `Offset X ${ov.offsetX}, Y ${ov.offsetY}`;
 
         debouncedRefresh();
         debouncedSave();
@@ -2116,11 +2202,11 @@ applyTheme();
     const setCopyPoint = async (point) => {
         config.isSettingCopyPoint = point;
         const keysToSave = ['isSettingCopyPoint'];
-        
+
         if (point) {
             config.autoCapturePixelUrl = false;
             keysToSave.push('autoCapturePixelUrl');
-            
+
             if (config.copyPreviewActive) {
                 config.copyPreviewActive = false;
                 config.showOverlay = overlayStateBeforePreview;
@@ -2128,7 +2214,7 @@ applyTheme();
                 clearOverlayCache();
             }
         }
-        
+
         await saveConfig(keysToSave);
         showToast(point ? `Haz clic en el lienzo para fijar el punto ${point}` : 'Selección cancelada.');
         updateUI();
@@ -2323,6 +2409,8 @@ applyTheme();
             const val = opt.dataset.value;
             const text = opt.innerText.replace(/[\uD800-\uDBFF][\uDC00-\uDFFF]\s+/, '');
             hiddenInput.value = val;
+            const ov = getActiveOverlay();
+            if (ov) { ov.colorMode = val; saveConfig(['overlays']); }
             let displayMode = 'BlueMarble';
             if(val === 'enhanced') displayMode = 'Pixel Art';
             if(val === 'photorealistic') displayMode = 'Dithering';
@@ -2383,23 +2471,22 @@ async function updateOverlayProgress() {
 
     try {
         const availableColors = getAvailableColors();
-        const img = await loadImage(ov.imageBase64);
-        const canvas = createHTMLCanvas(img.width, img.height);
-        const ctx = canvas.getContext('2d', { willReadFrequently: true });
-        ctx.drawImage(img, 0, 0);
-        const imageData = ctx.getImageData(0, 0, img.width, img.height);
-        const data = imageData.data;
-        const colorData = new Map();
+        const cacheData = await getOrBuildOverlayCache(ov);
+        const { width, height, colorIds, neededCounts } = cacheData;
 
-        for (let i = 0; i < data.length; i += 4) {
-            if (data[i + 3] > 200) {
-                const key = `${data[i]},${data[i+1]},${data[i+2]}`;
-                if (!colorData.has(key)) colorData.set(key, { needed: 0, placed: 0 });
-                colorData.get(key).needed++;
-            }
+        const colorData = new Map();
+        let totalNeeded = 0;
+        let totalPlaced = 0;
+
+        for (const [idStr, count] of Object.entries(neededCounts)) {
+            const id = Number(idStr);
+            const [r, g, b] = FULL_PALETTE[id];
+            const key = `${r},${g},${b}`;
+            colorData.set(key, { needed: count, placed: 0, botId: id });
+            totalNeeded += count;
         }
 
-        if (colorData.size === 0) {
+        if (totalNeeded === 0) {
             panelContent.innerHTML = `<span class="op-muted" style="text-align: center; padding: 20px 0;">La imagen está vacía.</span>`;
             return;
         }
@@ -2408,38 +2495,38 @@ async function updateOverlayProgress() {
         const overlayBaseX = base.chunk1 * TILE_SIZE + base.posX + ov.offsetX;
         const overlayBaseY = base.chunk2 * TILE_SIZE + base.posY + ov.offsetY;
 
-        const tileKeys = new Set();
-        for (let y = 0; y < img.height; y++) for (let x = 0; x < img.width; x++) {
-            if (data[(y * img.width + x) * 4 + 3] < 200) continue;
-            const absX = overlayBaseX + x, absY = overlayBaseY + y;
-            tileKeys.add(`${Math.floor(absX / TILE_SIZE)}/${Math.floor(absY / TILE_SIZE)}`);
-        }
+        for (const [tileKey, tileImageData] of tileDataCache.entries()) {
+            const [c1, c2] = tileKey.split('/').map(Number);
+            const tileAbsX = c1 * TILE_SIZE;
+            const tileAbsY = c2 * TILE_SIZE;
 
-        for (let y = 0; y < img.height; y++) {
-            for (let x = 0; x < img.width; x++) {
-                const i = (y * img.width + x) * 4;
-                if (data[i + 3] < 200) continue;
+            const isect = rectIntersect(tileAbsX, tileAbsY, TILE_SIZE, TILE_SIZE, overlayBaseX, overlayBaseY, width, height);
+            if (isect.w === 0 || isect.h === 0) continue;
 
-                const absX = overlayBaseX + x;
-                const absY = overlayBaseY + y;
-                const chunk1 = Math.floor(absX / TILE_SIZE);
-                const chunk2 = Math.floor(absY / TILE_SIZE);
-                const tileKey = `${chunk1}/${chunk2}`;
+            for (let y = 0; y < isect.h; y++) {
+                for (let x = 0; x < isect.w; x++) {
+                    const ovLocX = (isect.x + x) - overlayBaseX;
+                    const ovLocY = (isect.y + y) - overlayBaseY;
+                    const ovId = colorIds[ovLocY * width + ovLocX];
 
-                const tileImageData = tileDataCache.get(tileKey);
-                if (tileImageData) {
-                    const tileX = absX % TILE_SIZE;
-                    const tileY = absY % TILE_SIZE;
-                    const tileIdx = (tileY * TILE_SIZE + tileX) * 4;
+                    if (ovId === 255) continue;
 
-                    if (tileImageData.data[tileIdx + 3] > 200) {
-                        const r_ov = data[i], g_ov = data[i+1], b_ov = data[i+2];
-                        const r_map = tileImageData.data[tileIdx], g_map = tileImageData.data[tileIdx+1], b_map = tileImageData.data[tileIdx+2];
+                    const mapLocX = (isect.x + x) - tileAbsX;
+                    const mapLocY = (isect.y + y) - tileAbsY;
+                    const mapIdx = (mapLocY * TILE_SIZE + mapLocX) * 4;
 
-                        if (r_ov === r_map && g_ov === g_map && b_ov === b_map) {
-                            const neededColorKey = `${r_ov},${g_ov},${b_ov}`;
-                            if (colorData.has(neededColorKey)) {
-                                colorData.get(neededColorKey).placed++;
+                    const ma = tileImageData.data[mapIdx+3];
+                    if (ma > 200) {
+                        const mr = tileImageData.data[mapIdx];
+                        const mg = tileImageData.data[mapIdx+1];
+                        const mb = tileImageData.data[mapIdx+2];
+                        const targetColor = FULL_PALETTE[ovId];
+
+                        if (Math.abs(mr - targetColor[0]) + Math.abs(mg - targetColor[1]) + Math.abs(mb - targetColor[2]) < 15) {
+                            const key = `${targetColor[0]},${targetColor[1]},${targetColor[2]}`;
+                            if (colorData.has(key)) {
+                                colorData.get(key).placed++;
+                                totalPlaced++;
                             }
                         }
                     }
@@ -2447,10 +2534,8 @@ async function updateOverlayProgress() {
             }
         }
 
-        let totalNeeded = 0, totalPlaced = 0;
-        let colorsArray = Array.from(colorData.entries()).map(([key, { needed, placed }]) => {
-            totalNeeded += needed; totalPlaced += placed;
-            return { key, name: WPLACE_NAMES[key] || 'Desconocido', needed, placed, isAvailable: availableColors.has(key) };
+        let colorsArray = Array.from(colorData.entries()).map(([key, data]) => {
+            return { key, name: WPLACE_NAMES[key] || 'Desconocido', needed: data.needed, placed: data.placed, isAvailable: availableColors.has(key) };
         });
 
         colorsArray.sort((a, b) => {
@@ -2641,6 +2726,13 @@ async function updateOverlayProgress() {
 
     const indicator = document.getElementById('op-offset-indicator');
     if (indicator) indicator.textContent = `Offset X ${ov.offsetX}, Y ${ov.offsetY}`;
+
+    const cMode = ov.colorMode || 'standard';
+    $('op-color-mode').value = cMode;
+    const textMap = { 'standard': 'Estándar (Recomendado)', 'enhanced': 'Mejorado (Pixel Art)', 'photorealistic': 'Fotorealista (Dithering)' };
+    const textEl = $('op-mode-text');
+    if (textEl) textEl.textContent = textMap[cMode] || 'Estándar (Recomendado)';
+    document.querySelectorAll('.op-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.value === cMode));
   }
   function updateCopierUI() {
     const $ = (id) => document.getElementById(id);
@@ -2701,11 +2793,7 @@ function updateUI() {
 
     applyTheme();
 
-    const bodyStyles = getComputedStyle(document.body);
-    const bgColor = bodyStyles.getPropertyValue('--op-bg').trim();
-    const mainRgb = bgColor.startsWith('#')
-        ? (bgColor.length === 4 ? `${parseInt(bgColor[1], 16)*17},${parseInt(bgColor[2], 16)*17},${parseInt(bgColor[3], 16)*17}` : `${parseInt(bgColor.slice(1,3), 16)},${parseInt(bgColor.slice(3,5), 16)},${parseInt(bgColor.slice(5,7), 16)}`)
-        : bgColor.match(/\d+/g).join(',');
+    const mainRgb = '18, 18, 28';
 
     panel.style.setProperty('--op-bg-rgb', mainRgb);
     panel.style.setProperty('--op-panel-alpha', config.panelAlpha);
@@ -2920,7 +3008,7 @@ function updateUI() {
       setAllActive('free', !allActive);
       config.ccFreeKeys = Array.from(cc.selectedFree);
       await saveConfig(['ccFreeKeys']);
-      if (cc.realtime) recalcNow(); else markStale();
+      if (cc.realtime) { await processImage(); } else { cc.isStale = true; }
       applyPreview(); updateMeta(); updateMasterButtons();
     });
     cc.paidToggle.addEventListener('click', async () => {
@@ -2928,7 +3016,7 @@ function updateUI() {
       setAllActive('paid', !allActive);
       config.ccPaidKeys = Array.from(cc.selectedPaid);
       await saveConfig(['ccPaidKeys']);
-      if (cc.realtime) recalcNow(); else markStale();
+      if (cc.realtime) { await processImage(); } else { cc.isStale = true; }
       applyPreview(); updateMeta(); updateMasterButtons();
     });
 
@@ -2936,8 +3024,8 @@ function updateUI() {
       cc.isStale = true;
       cc.meta.textContent = cc.meta.textContent.replace(/ \| Estado: .+$/, '') + ' | Estado: pendiente de recálculo';
     }
-    function recalcNow() {
-      processImage();
+    async function recalcNow() {
+      await processImage();
       cc.isStale = false;
       applyPreview();
       updateMeta();
@@ -2953,19 +3041,21 @@ function updateUI() {
     cc.realtimeBtn.textContent = `En vivo: ${cc.realtime ? 'ON' : 'OFF'}`;
     cc.realtimeBtn.classList.toggle('op-danger', cc.realtime);
     const img = new Image();
-    img.onload = () => {
+    img.onload = async () => {
       if (!cc.sourceCanvas) { cc.sourceCanvas = document.createElement('canvas'); cc.sourceCtx = cc.sourceCanvas.getContext('2d', { willReadFrequently: true }); }
       cc.sourceCanvas.width = img.width; cc.sourceCanvas.height = img.height;
       cc.sourceCtx.clearRect(0,0,img.width,img.height);
       cc.sourceCtx.drawImage(img, 0, 0);
       cc.sourceImageData = cc.sourceCtx.getImageData(0,0,img.width,img.height);
       if (!cc.processedCanvas) { cc.processedCanvas = document.createElement('canvas'); cc.processedCtx = cc.processedCanvas.getContext('2d'); }
-      processImage();
+
+      cc.backdrop.classList.add('show');
+      cc.modal.classList.add('show');
+
+      await processImage();
       cc.isStale = false;
       applyPreview();
       updateMeta();
-      cc.backdrop.classList.add('show');
-      cc.modal.classList.add('show');
     };
     img.src = overlay.imageBase64;
   }
@@ -3002,26 +3092,75 @@ function updateUI() {
     return arr;
   }
 
-  function processImage() {
-    if (!cc.sourceImageData) return;
+  async function processImage() {
+    if (!cc.sourceImageData || cc.isProcessing) return;
+    cc.isProcessing = true;
+
+    cc.applyBtn.disabled = true;
+    cc.recalcBtn.disabled = true;
+    cc.meta.textContent = 'Calculando colores... por favor espera.';
+
     const w = cc.sourceImageData.width, h = cc.sourceImageData.height;
     const src = cc.sourceImageData.data;
     const out = new Uint8ClampedArray(src.length);
     const palette = getActivePalette();
     const counts = {};
-    for (let i = 0; i < src.length; i += 4) {
-      const r = src[i], g = src[i+1], b = src[i+2], a = src[i+3];
-      if (a === 0) { out[i]=0; out[i+1]=0; out[i+2]=0; out[i+3]=0; continue; }
-      const [nr, ng, nb] = palette.length ? weightedNearest(r,g,b,palette) : [r,g,b];
-      out[i]=nr; out[i+1]=ng; out[i+2]=nb; out[i+3]=255;
-      const key = `${nr},${ng},${nb}`;
-      counts[key] = (counts[key] || 0) + 1;
+    const colorCache = new Map();
+    const CHUNK_SIZE = 150000;
+    const totalPixels = src.length / 4;
+    let pixelIndex = 0;
+
+    await new Promise(resolve => {
+        function processChunk() {
+            const end = Math.min(pixelIndex + CHUNK_SIZE, totalPixels);
+
+            for (let i = pixelIndex; i < end; i++) {
+                const idx = i * 4;
+                const r = src[idx], g = src[idx+1], b = src[idx+2], a = src[idx+3];
+
+                if (a === 0) {
+                    out[idx]=0; out[idx+1]=0; out[idx+2]=0; out[idx+3]=0;
+                    continue;
+                }
+
+                const rawKey = (r << 16) | (g << 8) | b;
+                let best = colorCache.get(rawKey);
+
+                if (!best) {
+                    best = palette.length ? weightedNearest(r, g, b, palette) : [r, g, b];
+                    colorCache.set(rawKey, best);
+                }
+
+                out[idx]=best[0]; out[idx+1]=best[1]; out[idx+2]=best[2]; out[idx+3]=255;
+
+                const key = `${best[0]},${best[1]},${best[2]}`;
+                counts[key] = (counts[key] || 0) + 1;
+            }
+
+            pixelIndex = end;
+            if (pixelIndex < totalPixels) {
+                cc.meta.textContent = `Calculando colores... ${Math.floor((pixelIndex / totalPixels) * 100)}%`;
+                setTimeout(processChunk, 0);
+            } else {
+                resolve();
+            }
+        }
+        processChunk();
+    });
+
+    if (!cc.processedCanvas) {
+        cc.processedCanvas = document.createElement('canvas');
+        cc.processedCtx = cc.processedCanvas.getContext('2d');
     }
-    if (!cc.processedCanvas) { cc.processedCanvas = document.createElement('canvas'); cc.processedCtx = cc.processedCanvas.getContext('2d'); }
-    cc.processedCanvas.width = w; cc.processedCanvas.height = h;
+    cc.processedCanvas.width = w;
+    cc.processedCanvas.height = h;
     const outImg = new ImageData(out, w, h);
     cc.processedCtx.putImageData(outImg, 0, 0);
     cc.lastColorCounts = counts;
+
+    cc.applyBtn.disabled = false;
+    cc.recalcBtn.disabled = false;
+    cc.isProcessing = false;
   }
 
   function applyPreview() {
@@ -3063,7 +3202,7 @@ function updateUI() {
         if (cc.selectedFree.has(key)) cc.selectedFree.delete(key); else cc.selectedFree.add(key);
         cell.classList.toggle('active', cc.selectedFree.has(key));
         config.ccFreeKeys = Array.from(cc.selectedFree); await saveConfig(['ccFreeKeys']);
-        if (cc.realtime) processImage(); else { cc.isStale = true; }
+        if (cc.realtime) { await processImage(); } else { cc.isStale = true; }
         applyPreview(); updateMeta(); updateMasterButtons();
       });
       cc.freeGrid.appendChild(cell);
@@ -3081,7 +3220,7 @@ function updateUI() {
         if (cc.selectedPaid.has(key)) cc.selectedPaid.delete(key); else cc.selectedPaid.add(key);
         cell.classList.toggle('active', cc.selectedPaid.has(key));
         config.ccPaidKeys = Array.from(cc.selectedPaid); await saveConfig(['ccPaidKeys']);
-        if (cc.realtime) processImage(); else { cc.isStale = true; }
+        if (cc.realtime) { await processImage(); } else { cc.isStale = true; }
         applyPreview(); updateMeta(); updateMasterButtons();
       });
       cc.paidGrid.appendChild(cell);
@@ -3127,121 +3266,46 @@ function updateUI() {
         <div class="op-rs-title">Redimensionar Superposición</div>
         <button class="op-rs-close" id="op-rs-close" title="Cerrar">✕</button>
       </div>
-
-      <div class="op-rs-tabs">
-        <button class="op-rs-tab-btn active" id="op-rs-tab-simple">Simple</button>
-        <button class="op-rs-tab-btn" id="op-rs-tab-advanced">Avanzado (cuadrícula)</button>
-      </div>
-
-      <div class="op-rs-body">
-        <div class="op-rs-pane show" id="op-rs-pane-simple">
-          <div class="op-rs-row">
+      <div class="op-rs-body" style="padding: 15px;">
+          <div class="op-rs-row" style="margin-bottom: 8px;">
             <label style="width:110px;">Original</label>
             <input type="text" class="op-input" id="op-rs-orig" disabled>
           </div>
-          <div class="op-rs-row">
+          <div class="op-rs-row" style="margin-bottom: 8px;">
             <label style="width:110px;">Ancho</label>
             <input type="number" min="1" step="1" class="op-input" id="op-rs-w">
           </div>
-          <div class="op-rs-row">
+          <div class="op-rs-row" style="margin-bottom: 8px;">
             <label style="width:110px;">Alto</label>
             <input type="number" min="1" step="1" class="op-input" id="op-rs-h">
           </div>
-          <div class="op-rs-row">
+          <div class="op-rs-row" style="margin-bottom: 12px;">
             <input type="checkbox" id="op-rs-lock" checked>
             <label for="op-rs-lock">Bloquear relación de aspecto</label>
           </div>
-          <div class="op-rs-row" style="gap:6px; flex-wrap:wrap;">
-            <label style="width:110px;">Rápido</label>
+          <div class="op-rs-row" style="gap:6px; flex-wrap:wrap; margin-bottom: 12px;">
+            <label style="width:110px;">Escalado Rápido</label>
             <button class="op-button" id="op-rs-double">2x</button>
             <button class="op-button" id="op-rs-onex">1x</button>
             <button class="op-button" id="op-rs-half">0.5x</button>
             <button class="op-button" id="op-rs-third">0.33x</button>
-            <button class="op-button" id="op-rs-quarter">0.25x</button>
           </div>
-          <div class="op-rs-row">
-            <label style="width:110px;">Factor de escala</label>
-            <input type="number" step="0.01" min="0.01" class="op-input" id="op-rs-scale" placeholder="ej. 0.5">
-            <button class="op-button" id="op-rs-apply-scale">Aplicar</button>
-          </div>
-
-          <div class="op-rs-preview-wrap" id="op-rs-sim-wrap">
-            <div class="op-rs-dual">
-              <div class="op-rs-col" id="op-rs-col-left">
-                <div class="label">Original</div>
-                <div class="pad-top"></div>
-                <canvas id="op-rs-sim-orig" class="op-rs-canvas op-rs-thumb"></canvas>
+          <div class="op-rs-preview-wrap" style="height: 200px; display: flex; gap: 10px; background: var(--op-bg); border-radius: 8px; padding: 10px;">
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
+                  <span style="font-size:11px; color:var(--op-muted);">Original</span>
+                  <canvas id="op-rs-sim-orig" style="max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;"></canvas>
               </div>
-              <div class="op-rs-col" id="op-rs-col-right">
-                <div class="label">Resultado</div>
-                <div class="pad-top"></div>
-                <canvas id="op-rs-sim-new" class="op-rs-canvas op-rs-thumb"></canvas>
+              <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
+                  <span style="font-size:11px; color:var(--op-muted);">Resultado</span>
+                  <canvas id="op-rs-sim-new" style="max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;"></canvas>
               </div>
-            </div>
           </div>
-        </div>
-
-        <div class="op-rs-pane" id="op-rs-pane-advanced">
-          <div class="op-rs-preview-wrap op-pan-grab" id="op-rs-adv-wrap">
-            <canvas id="op-rs-preview" class="op-rs-canvas"></canvas>
-            <div class="op-rs-zoom">
-              <button class="op-icon-btn" id="op-rs-zoom-out" title="Alejar">−</button>
-              <button class="op-icon-btn" id="op-rs-zoom-in" title="Acercar">+</button>
-            </div>
-          </div>
-
-          <div class="op-rs-row" style="margin-top:8px;">
-            <label style="width:160px;">Multiplicador</label>
-            <input type="range" id="op-rs-mult-range" min="1" max="64" step="0.1" style="flex:1;">
-            <input type="number" id="op-rs-mult-input" class="op-input op-rs-mini" min="1" step="0.05">
-          </div>
-
-          <div class="op-rs-row">
-            <input type="checkbox" id="op-rs-bind" checked>
-            <label for="op-rs-bind">Vincular tamaños de bloque X/Y</label>
-          </div>
-
-          <div class="op-rs-row">
-            <label style="width:160px;">Ancho / Alto de Bloque</label>
-            <input type="number" id="op-rs-blockw" class="op-input op-rs-mini" min="1" step="0.1">
-            <input type="number" id="op-rs-blockh" class="op-input op-rs-mini" min="1" step="0.1">
-          </div>
-
-          <div class="op-rs-row">
-            <label style="width:160px;">Offset X / Y</label>
-            <input type="number" id="op-rs-offx" class="op-input op-rs-mini" min="0" step="0.1">
-            <input type="number" id="op-rs-offy" class="op-input op-rs-mini" min="0" step="0.1">
-          </div>
-
-          <div class="op-rs-row">
-            <label style="width:160px;">Radio del punto</label>
-            <input type="range" id="op-rs-dotr" min="1" max="8" step="1" style="flex:1;">
-            <span id="op-rs-dotr-val" class="op-muted" style="width:36px; text-align:right;"></span>
-          </div>
-
-          <div class="op-rs-row">
-            <input type="checkbox" id="op-rs-grid" checked>
-            <label for="op-rs-grid">Mostrar cuadrícula</label>
-          </div>
-
-          <div class="op-rs-grid-note" id="op-rs-adv-note">Alinea los puntos rojos con el centro de los bloques. Arrastra para mover; usa los botones o Ctrl+rueda para hacer zoom.</div>
-
-          <div class="op-rs-row" style="margin-top:8px;">
-            <label style="width:160px;">Previsualización</label>
-            <span class="op-muted" id="op-rs-adv-resmeta"></span>
-          </div>
-          <div class="op-rs-preview-wrap" id="op-rs-adv-result-wrap" style="height: clamp(200px, 26vh, 420px);">
-            <canvas id="op-rs-adv-result" class="op-rs-canvas"></canvas>
-          </div>
-        </div>
       </div>
-
       <div class="op-rs-footer">
-        <div class="op-cc-ghost" id="op-rs-meta">Muestreo por vecino más cercano O centro de la cuadrícula.</div>
+        <div class="op-cc-ghost" id="op-rs-meta">Dimensiones correctas.</div>
         <div class="op-cc-actions">
-          <button class="op-button" id="op-rs-calc" title="Calcula la previsualización del resultado con los parámetros avanzados.">Calcular</button>
-          <button class="op-button" id="op-rs-apply" title="Aplica los cambios de tamaño a la imagen de la superposición.">Aplicar</button>
-          <button class="op-button" id="op-rs-cancel" title="Cierra la ventana sin aplicar los cambios de tamaño.">Cancelar</button>
+          <button class="op-button" id="op-rs-apply">Aplicar</button>
+          <button class="op-button" id="op-rs-cancel">Cancelar</button>
         </div>
       </div>
     `;
@@ -3249,408 +3313,109 @@ function updateUI() {
 
     const els = {
       backdrop, modal,
-      tabSimple: modal.querySelector('#op-rs-tab-simple'), tabAdvanced: modal.querySelector('#op-rs-tab-advanced'),
-      paneSimple: modal.querySelector('#op-rs-pane-simple'), paneAdvanced: modal.querySelector('#op-rs-pane-advanced'),
       orig: modal.querySelector('#op-rs-orig'), w: modal.querySelector('#op-rs-w'), h: modal.querySelector('#op-rs-h'),
-      lock: modal.querySelector('#op-rs-lock'), note: modal.querySelector('#op-rs-note'),
-      onex: modal.querySelector('#op-rs-onex'), half: modal.querySelector('#op-rs-half'), third: modal.querySelector('#op-rs-third'),
-      quarter: modal.querySelector('#op-rs-quarter'), double: modal.querySelector('#op-rs-double'),
-      scale: modal.querySelector('#op-rs-scale'), applyScale: modal.querySelector('#op-rs-apply-scale'),
-      simWrap: modal.querySelector('#op-rs-sim-wrap'), simOrig: modal.querySelector('#op-rs-sim-orig'), simNew: modal.querySelector('#op-rs-sim-new'),
-      colLeft: modal.querySelector('#op-rs-col-left'), colRight: modal.querySelector('#op-rs-col-right'),
-      advWrap: modal.querySelector('#op-rs-adv-wrap'), preview: modal.querySelector('#op-rs-preview'),
-      meta: modal.querySelector('#op-rs-meta'), zoomIn: modal.querySelector('#op-rs-zoom-in'), zoomOut: modal.querySelector('#op-rs-zoom-out'),
-      multRange: modal.querySelector('#op-rs-mult-range'), multInput: modal.querySelector('#op-rs-mult-input'),
-      bind: modal.querySelector('#op-rs-bind'), blockW: modal.querySelector('#op-rs-blockw'), blockH: modal.querySelector('#op-rs-blockh'),
-      offX: modal.querySelector('#op-rs-offx'), offY: modal.querySelector('#op-rs-offy'),
-      dotR: modal.querySelector('#op-rs-dotr'), dotRVal: modal.querySelector('#op-rs-dotr-val'), gridToggle: modal.querySelector('#op-rs-grid'),
-      advNote: modal.querySelector('#op-rs-adv-note'), resWrap: modal.querySelector('#op-rs-adv-result-wrap'),
-      resCanvas: modal.querySelector('#op-rs-adv-result'), resMeta: modal.querySelector('#op-rs-adv-resmeta'),
-      calcBtn: modal.querySelector('#op-rs-calc'), applyBtn: modal.querySelector('#op-rs-apply'),
-      cancelBtn: modal.querySelector('#op-rs-cancel'), closeBtn: modal.querySelector('#op-rs-close'),
+      lock: modal.querySelector('#op-rs-lock'),
+      onex: modal.querySelector('#op-rs-onex'), half: modal.querySelector('#op-rs-half'),
+      third: modal.querySelector('#op-rs-third'), double: modal.querySelector('#op-rs-double'),
+      simOrig: modal.querySelector('#op-rs-sim-orig'), simNew: modal.querySelector('#op-rs-sim-new'),
+      meta: modal.querySelector('#op-rs-meta'),
+      applyBtn: modal.querySelector('#op-rs-apply'), cancelBtn: modal.querySelector('#op-rs-cancel'), closeBtn: modal.querySelector('#op-rs-close')
     };
 
-    const ctxPrev = els.preview.getContext('2d', { willReadFrequently: true });
     const ctxSimOrig = els.simOrig.getContext('2d', { willReadFrequently: true });
     const ctxSimNew = els.simNew.getContext('2d', { willReadFrequently: true });
-    const ctxRes = els.resCanvas.getContext('2d', { willReadFrequently: true });
 
-    rs = {
-      ...els, ov: null, img: null, origW: 0, origH: 0, mode: 'simple', zoom: 1.0, updating: false,
-      mult: 4, gapX: 4, gapY: 4, offx: 0, offy: 0, dotr: 1, viewX: 0, viewY: 0,
-      panning: false, panStart: null, calcCanvas: null, calcCols: 0, calcRows: 0, calcReady: false,
-    };
+    rs = { ...els, ov: null, img: null, origW: 0, origH: 0, updating: false };
 
-    const computeSimpleFooterText = () => {
+    const syncMeta = () => {
       const W = parseInt(rs.w.value||'0',10), H = parseInt(rs.h.value||'0',10);
       const ok = Number.isFinite(W) && Number.isFinite(H) && W>0 && H>0;
       const limit = (W >= MAX_OVERLAY_DIM || H >= MAX_OVERLAY_DIM);
-      return ok ? (limit ? `Objetivo: ${W}×${H} (excede el límite: < ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM})` : `Objetivo: ${W}×${H} (OK)`) : 'Ingresa un ancho y alto positivos.';
+      rs.meta.textContent = ok ? (limit ? `Objetivo: ${W}×${H} (Límite: < ${MAX_OVERLAY_DIM})` : `Objetivo: ${W}×${H} (OK)`) : 'Dimensiones inválidas.';
+      rs.applyBtn.disabled = (!ok || limit);
     };
-    const sampleDims = () => {
-      const cols = Math.floor((rs.origW - rs.offx) / rs.gapX), rows = Math.floor((rs.origH - rs.offy) / rs.gapY);
-      return { cols: Math.max(0, cols), rows: Math.max(0, rows) };
-    };
-    const computeAdvancedFooterText = () => {
-      const { cols, rows } = sampleDims();
-      const limit = (cols >= MAX_OVERLAY_DIM || rows >= MAX_OVERLAY_DIM);
-      return (cols>0 && rows>0) ? `Muestras: ${cols} × ${rows} | Salida: ${cols}×${rows}${limit ? ` (excede el límite: < ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM})` : ''}` : 'Ajusta el multiplicador/offset hasta que los puntos se centren.';
-    };
-    const updateFooterMeta = () => { rs.meta.textContent = (rs.mode === 'advanced') ? computeAdvancedFooterText() : computeSimpleFooterText(); };
-    const syncSimpleNote = () => {
-      const W = parseInt(rs.w.value||'0',10), H = parseInt(rs.h.value||'0',10);
-      const ok = Number.isFinite(W) && Number.isFinite(H) && W>0 && H>0;
-      const limit = (W >= MAX_OVERLAY_DIM || H >= MAX_OVERLAY_DIM);
-      const simpleText = ok ? (limit ? `Objetivo: ${W}×${H} (excede el límite: < ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM})` : `Objetivo: ${W}×${H} (OK)`) : 'Ingresa un ancho y alto positivos.';
-      if (rs.note) rs.note.textContent = simpleText;
-      if (rs.mode === 'simple') rs.applyBtn.disabled = (!ok || limit);
-      if (rs.mode === 'simple') rs.meta.textContent = simpleText;
-    };
-    function applyScaleToFields(scale) {
-      const W = Math.max(1, Math.round(rs.origW * scale)), H = Math.max(1, Math.round(rs.origH * scale));
+
+    const applyScale = (scale) => {
+      const W = Math.max(1, Math.round(rs.origW * scale));
       rs.updating = true;
       rs.w.value = W;
-      rs.h.value = rs.lock.checked ? Math.max(1, Math.round(W * rs.origH / rs.origW)) : H;
+      rs.h.value = rs.lock.checked ? Math.max(1, Math.round(W * rs.origH / rs.origW)) : Math.max(1, Math.round(rs.origH * scale));
       rs.updating = false;
-      syncSimpleNote();
-    }
-    function drawSimplePreview() {
+      syncMeta(); drawPreviews();
+    };
+
+    const drawPreviews = () => {
       if (!rs.img) return;
-      const leftLabelH = rs.colLeft.querySelector('.pad-top').offsetHeight, rightLabelH = rs.colRight.querySelector('.pad-top').offsetHeight;
-      const leftW = rs.colLeft.clientWidth, rightW = rs.colRight.clientWidth;
-      const leftH = rs.colLeft.clientHeight - leftLabelH, rightH = rs.colRight.clientHeight - rightLabelH;
-      rs.simOrig.width = leftW; rs.simOrig.height = leftH;
-      rs.simNew.width  = rightW; rs.simNew.height = rightH;
-      ctxSimOrig.save();
-      ctxSimOrig.imageSmoothingEnabled = false;
-      ctxSimOrig.clearRect(0,0,leftW,leftH);
-      const sFit = Math.min(leftW / rs.origW, leftH / rs.origH);
-      const dW = Math.max(1, Math.floor(rs.origW * sFit)), dH = Math.max(1, Math.floor(rs.origH * sFit));
-      const dx0 = Math.floor((leftW - dW) / 2), dy0 = Math.floor((leftH - dH) / 2);
-      ctxSimOrig.drawImage(rs.img, 0,0, rs.origW,rs.origH, dx0,dy0, dW,dH);
-      ctxSimOrig.restore();
+      rs.simOrig.width = rs.origW; rs.simOrig.height = rs.origH;
+      ctxSimOrig.clearRect(0,0,rs.origW,rs.origH);
+      ctxSimOrig.drawImage(rs.img, 0, 0);
+
       const W = parseInt(rs.w.value||'0',10), H = parseInt(rs.h.value||'0',10);
-      ctxSimNew.save();
-      ctxSimNew.imageSmoothingEnabled = false;
-      ctxSimNew.clearRect(0,0,rightW,rightH);
-      if (Number.isFinite(W) && Number.isFinite(H) && W>0 && H>0) {
-        const tiny = createCanvas(W, H), tctx = tiny.getContext('2d', { willReadFrequently: true });
-        tctx.imageSmoothingEnabled = false;
-        tctx.clearRect(0,0,W,H);
-        tctx.drawImage(rs.img, 0,0, rs.origW,rs.origH, 0,0, W,H);
-        const id = tctx.getImageData(0,0,W,H), data = id.data;
-        for (let i=0;i<data.length;i+=4) { if (data[i+3] !== 0) data[i+3]=255; }
-        tctx.putImageData(id, 0, 0);
-        const s2 = Math.min(rightW / W, rightH / H);
-        const dW2 = Math.max(1, Math.floor(W * s2)), dH2 = Math.max(1, Math.floor(H * s2));
-        const dx2 = Math.floor((rightW - dW2)/2), dy2 = Math.floor((rightH - dH2)/2);
-        ctxSimNew.drawImage(tiny, 0,0, W,H, dx2,dy2, dW2,dH2);
-      } else {
-        ctxSimNew.drawImage(rs.img, 0,0, rs.origW,rs.origH, dx0,dy0, dW,dH);
+      if (W>0 && H>0) {
+        rs.simNew.width = W; rs.simNew.height = H;
+        ctxSimNew.imageSmoothingEnabled = false;
+        ctxSimNew.clearRect(0,0,W,H);
+        ctxSimNew.drawImage(rs.img, 0, 0, rs.origW, rs.origH, 0, 0, W, H);
       }
-      ctxSimNew.restore();
-    }
-    const syncAdvFieldsToState = () => {
-      rs.updating = true;
-      rs.multRange.value = String(rs.mult); rs.multInput.value = String(rs.mult);
-      rs.blockW.value = String(rs.gapX); rs.blockH.value = String(rs.gapY);
-      rs.offX.value = String(rs.offx); rs.offY.value = String(rs.offy);
-      rs.dotR.value = String(rs.dotr); rs.dotRVal.textContent = String(rs.dotr);
-      rs.updating = false;
     };
-    function syncAdvancedMeta() {
-      const { cols, rows } = sampleDims(), limit = (cols >= MAX_OVERLAY_DIM || rows >= MAX_OVERLAY_DIM);
-      if (rs.mode === 'advanced') {
-        rs.applyBtn.disabled = !rs.calcReady;
-      } else {
-        const W = parseInt(rs.w.value||'0',10), H = parseInt(rs.h.value||'0',10);
-        const ok = Number.isFinite(W)&&Number.isFinite(H)&&W>0&&H>0&&W<MAX_OVERLAY_DIM&&H<MAX_OVERLAY_DIM;
-        rs.applyBtn.disabled = !ok;
-      }
-      updateFooterMeta();
-    }
-    function drawAdvancedPreview() {
-      if (rs.mode !== 'advanced' || !rs.img) return;
-      const w = rs.origW, h = rs.origH;
-      const destW = Math.max(50, Math.floor(rs.advWrap.clientWidth)), destH = Math.max(50, Math.floor(rs.advWrap.clientHeight));
-      rs.preview.width = destW; rs.preview.height = destH;
-      const sw = Math.max(1, Math.floor(destW / rs.zoom)), sh = Math.max(1, Math.floor(destH / rs.zoom));
-      const maxX = Math.max(0, w - sw), maxY = Math.max(0, h - sh);
-      rs.viewX = Math.min(Math.max(0, rs.viewX), maxX);
-      rs.viewY = Math.min(Math.max(0, rs.viewY), maxY);
-      ctxPrev.save();
-      ctxPrev.imageSmoothingEnabled = false;
-      ctxPrev.clearRect(0,0,destW,destH);
-      ctxPrev.drawImage(rs.img, rs.viewX, rs.viewY, sw, sh, 0, 0, destW, destH);
-      if (rs.gridToggle.checked && rs.gapX >= 1 && rs.gapY >= 1) {
-        ctxPrev.strokeStyle = 'rgba(255,59,48,0.45)';
-        ctxPrev.lineWidth = 1;
-        const startGX = Math.ceil((rs.viewX - rs.offx) / rs.gapX), endGX   = Math.floor((rs.viewX + sw - rs.offx) / rs.gapX);
-        const startGY = Math.ceil((rs.viewY - rs.offy) / rs.gapY), endGY   = Math.floor((rs.viewY + sh - rs.offy) / rs.gapY);
-        const linesX = Math.max(0, endGX - startGX + 1), linesY = Math.max(0, endGY - startGY + 1);
-        if (linesX <= 4000 && linesY <= 4000) {
-          ctxPrev.beginPath();
-          for (let gx = startGX; gx <= endGX; gx++) {
-            const x = rs.offx + gx * rs.gapX, px = Math.round((x - rs.viewX) * rs.zoom);
-            ctxPrev.moveTo(px + 0.5, 0);
-            ctxPrev.lineTo(px + 0.5, destH);
-          }
-          for (let gy = startGY; gy <= endGY; gy++) {
-            const y = rs.offy + gy * rs.gapY, py = Math.round((y - rs.viewY) * rs.zoom);
-            ctxPrev.moveTo(0, py + 0.5);
-            ctxPrev.lineTo(destW, py + 0.5);
-          }
-          ctxPrev.stroke();
-        }
-      }
-      if (rs.gapX >= 1 && rs.gapY >= 1) {
-        ctxPrev.fillStyle = '#ff3b30';
-        const cx0 = rs.offx + Math.floor(rs.gapX/2), cy0 = rs.offy + Math.floor(rs.gapY/2);
-        if (cx0 >= 0 && cy0 >= 0) {
-          const startX = Math.ceil((rs.viewX - cx0) / rs.gapX), startY = Math.ceil((rs.viewY - cy0) / rs.gapY);
-          const endY = Math.floor((rs.viewY + sh - 1 - cy0) / rs.gapY), endX2 = Math.floor((rs.viewX + sw - 1 - cx0) / rs.gapX);
-          const r = rs.dotr, dotsX = Math.max(0, endX2 - startX + 1), dotsY = Math.max(0, endY - startY + 1);
-          if (dotsX * dotsY <= 300000) {
-            for (let gy = startY; gy <= endY; gy++) {
-              const y = cy0 + gy * rs.gapY;
-              for (let gx = startX; gx <= endX2; gx++) {
-                const x = cx0 + gx * rs.gapX, px = Math.round((x - rs.viewX) * rs.zoom), py = Math.round((y - rs.viewY) * rs.zoom);
-                ctxPrev.beginPath();
-                ctxPrev.arc(px, py, r, 0, Math.PI*2);
-                ctxPrev.fill();
-              }
-            }
-          }
-        }
-      }
-      ctxPrev.restore();
-    }
-    function drawAdvancedResultPreview() {
-      const canvas = rs.calcCanvas, wrap = rs.resWrap;
-      if (!wrap || !canvas) {
-        ctxRes.clearRect(0,0, rs.resCanvas.width, rs.resCanvas.height);
-        rs.resMeta.textContent = 'Sin resultado. Haz clic en Calcular.';
-        return;
-      }
-      const W = canvas.width, H = canvas.height;
-      const availW = Math.max(50, Math.floor(wrap.clientWidth - 16)), availH = Math.max(50, Math.floor(wrap.clientHeight - 16));
-      const s = Math.min(availW / W, availH / H);
-      const dW = Math.max(1, Math.floor(W * s)), dH = Math.max(1, Math.floor(H * s));
-      rs.resCanvas.width = dW; rs.resCanvas.height = dH;
-      ctxRes.save();
-      ctxRes.imageSmoothingEnabled = false;
-      ctxRes.clearRect(0,0,dW,dH);
-      ctxRes.drawImage(canvas, 0,0, W,H, 0,0, dW,dH);
-      ctxRes.restore();
-      rs.resMeta.textContent = `Salida: ${W}×${H}${(W>=MAX_OVERLAY_DIM||H>=MAX_OVERLAY_DIM) ? ` (excede el límite: < ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM})` : ''}`;
-    }
-    rs._drawSimplePreview = drawSimplePreview; rs._drawAdvancedPreview = drawAdvancedPreview; rs._drawAdvancedResultPreview = drawAdvancedResultPreview;
-    const setMode = (m) => {
-      rs.mode = m;
-      rs.tabSimple.classList.toggle('active', m === 'simple'); rs.tabAdvanced.classList.toggle('active', m === 'advanced');
-      rs.paneSimple.classList.toggle('show', m === 'simple'); rs.paneAdvanced.classList.toggle('show', m === 'advanced');
-      updateFooterMeta();
-      rs.calcBtn.style.display = (m === 'advanced') ? 'inline-block' : 'none';
-      if (m === 'advanced') { rs.applyBtn.disabled = !rs.calcReady; } else { syncSimpleNote(); }
-      syncAdvancedMeta();
-      if (m === 'advanced') { drawAdvancedPreview(); drawAdvancedResultPreview(); } else { drawSimplePreview(); }
-    };
-    rs.tabSimple.addEventListener('click', () => setMode('simple'));
-    rs.tabAdvanced.addEventListener('click', () => setMode('advanced'));
-    const onWidthInput = () => {
+
+    rs.w.addEventListener('input', () => {
       if (rs.updating) return; rs.updating = true;
       const W = parseInt(rs.w.value||'0',10);
-      if (rs.lock.checked && rs.origW>0 && rs.origH>0 && W>0) { rs.h.value = Math.max(1, Math.round(W * rs.origH / rs.origW)); }
-      rs.updating = false; syncSimpleNote(); if (rs.mode === 'simple') drawSimplePreview();
-    };
-    const onHeightInput = () => {
+      if (rs.lock.checked && rs.origW>0 && rs.origH>0 && W>0) rs.h.value = Math.max(1, Math.round(W * rs.origH / rs.origW));
+      rs.updating = false; syncMeta(); drawPreviews();
+    });
+
+    rs.h.addEventListener('input', () => {
       if (rs.updating) return; rs.updating = true;
       const H = parseInt(rs.h.value||'0',10);
-      if (rs.lock.checked && rs.origW>0 && rs.origH>0 && H>0) { rs.w.value = Math.max(1, Math.round(H * rs.origW / rs.origH)); }
-      rs.updating = false; syncSimpleNote(); if (rs.mode === 'simple') drawSimplePreview();
-    };
-    rs.w.addEventListener('input', onWidthInput); rs.h.addEventListener('input', onHeightInput);
-    rs.onex.addEventListener('click', () => { applyScaleToFields(1); drawSimplePreview(); });
-    rs.half.addEventListener('click', () => { applyScaleToFields(0.5); drawSimplePreview(); });
-    rs.third.addEventListener('click', () => { applyScaleToFields(1/3); drawSimplePreview(); });
-    rs.quarter.addEventListener('click', () => { applyScaleToFields(1/4); drawSimplePreview(); });
-    rs.double.addEventListener('click', () => { applyScaleToFields(2); drawSimplePreview(); });
-    rs.applyScale.addEventListener('click', () => {
-      const s = parseFloat(rs.scale.value||'');
-      if (!Number.isFinite(s) || s<=0) { showToast('Ingresa un factor de escala válido > 0'); return; }
-      applyScaleToFields(s); drawSimplePreview();
+      if (rs.lock.checked && rs.origW>0 && rs.origH>0 && H>0) rs.w.value = Math.max(1, Math.round(H * rs.origW / rs.origH));
+      rs.updating = false; syncMeta(); drawPreviews();
     });
-    const markCalcStale = () => {
-      if (rs.mode === 'advanced') { rs.calcReady = false; rs.applyBtn.disabled = true; drawAdvancedResultPreview(); updateFooterMeta(); }
-    };
-    const onMultChange = (v) => {
-      if (rs.updating) return;
-      const parsed = parseFloat(v); if (!Number.isFinite(parsed)) return;
-      const clamped = Math.min(Math.max(parsed, 1), 128);
-      rs.mult = clamped;
-      if (rs.bind.checked) { rs.gapX = clamped; rs.gapY = clamped; }
-      syncAdvFieldsToState(); syncAdvancedMeta(); drawAdvancedPreview(); markCalcStale();
-    };
-    rs.multRange.addEventListener('input', (e) => { if (rs.updating) return; onMultChange(e.target.value); });
-    rs.multInput.addEventListener('input', (e) => {
-      if (rs.updating) return;
-      const v = e.target.value; if (!Number.isFinite(parseFloat(v))) return;
-      onMultChange(v);
-    });
-    rs.bind.addEventListener('change', () => {
-      if (rs.bind.checked) { rs.gapX = rs.mult; rs.gapY = rs.mult; syncAdvFieldsToState(); }
-      syncAdvancedMeta(); drawAdvancedPreview(); markCalcStale();
-    });
-    rs.blockW.addEventListener('input', (e) => {
-      if (rs.updating) return;
-      const raw = e.target.value, val = parseFloat(raw); if (!Number.isFinite(val)) return;
-      rs.gapX = Math.min(Math.max(val, 1), 4096);
-      if (rs.bind.checked) { rs.mult = rs.gapX; rs.gapY = rs.gapX; }
-      syncAdvFieldsToState(); syncAdvancedMeta(); drawAdvancedPreview(); markCalcStale();
-    });
-    rs.blockH.addEventListener('input', (e) => {
-      if (rs.updating) return;
-      const raw = e.target.value, val = parseFloat(raw); if (!Number.isFinite(val)) return;
-      rs.gapY = Math.min(Math.max(val, 1), 4096);
-      if (rs.bind.checked) { rs.mult = rs.gapY; rs.gapX = rs.gapY; }
-      syncAdvFieldsToState(); syncAdvancedMeta(); drawAdvancedPreview(); markCalcStale();
-    });
-    rs.offX.addEventListener('input', (e) => {
-      const raw = e.target.value, val = parseFloat(raw); if (!Number.isFinite(val)) return;
-      rs.offx = Math.min(Math.max(val, 0), Math.max(0, rs.origH-0.0001));
-      rs.viewX = Math.min(rs.viewX, Math.max(0, rs.origW - 1));
-      syncAdvancedMeta(); drawAdvancedPreview(); markCalcStale();
-    });
-    rs.offY.addEventListener('input', (e) => {
-      const raw = e.target.value, val = parseFloat(raw); if (!Number.isFinite(val)) return;
-      rs.offy = Math.min(Math.max(val, 0), Math.max(0, rs.origH-0.0001));
-      rs.viewY = Math.min(rs.viewY, Math.max(0, rs.origH - 1));
-      syncAdvancedMeta(); drawAdvancedPreview(); markCalcStale();
-    });
-    rs.dotR.addEventListener('input', (e) => {
-      rs.dotr = Math.max(1, Math.round(Number(e.target.value)||1));
-      rs.dotRVal.textContent = String(rs.dotr);
-      drawAdvancedPreview();
-    });
-    rs.gridToggle.addEventListener('change', drawAdvancedPreview);
-    const applyZoom = (factor) => {
-      const destW = Math.max(50, Math.floor(rs.advWrap.clientWidth)), destH = Math.max(50, Math.floor(rs.advWrap.clientHeight));
-      const sw = Math.max(1, Math.floor(destW / rs.zoom)), sh = Math.max(1, Math.floor(destH / rs.zoom));
-      const cx = rs.viewX + sw / 2, cy = rs.viewY + sh / 2;
-      rs.zoom = Math.min(32, Math.max(0.1, rs.zoom * factor));
-      const sw2 = Math.max(1, Math.floor(destW / rs.zoom)), sh2 = Math.max(1, Math.floor(destH / rs.zoom));
-      rs.viewX = Math.min(Math.max(0, Math.round(cx - sw2 / 2)), Math.max(0, rs.origW - sw2));
-      rs.viewY = Math.min(Math.max(0, Math.round(cy - sh2 / 2)), Math.max(0, rs.origH - sh2));
-      drawAdvancedPreview();
-    };
-    rs.zoomIn.addEventListener('click', () => applyZoom(1.25));
-    rs.zoomOut.addEventListener('click', () => applyZoom(1/1.25));
-    rs.advWrap.addEventListener('wheel', (e) => { if (!e.ctrlKey) return; e.preventDefault(); const delta = e.deltaY || 0; applyZoom(delta > 0 ? 1/1.15 : 1.15); }, { passive: false });
-    const onPanDown = (e) => {
-      if (e.target.closest('.op-rs-zoom')) return;
-      rs.panning = true; rs.panStart = { x: e.clientX, y: e.clientY, viewX: rs.viewX, viewY: rs.viewY };
-      rs.advWrap.classList.remove('op-pan-grab'); rs.advWrap.classList.add('op-pan-grabbing');
-      rs.advWrap.setPointerCapture?.(e.pointerId);
-    };
-    const onPanMove = (e) => {
-      if (!rs.panning) return;
-      const dx = e.clientX - rs.panStart.x, dy = e.clientY - rs.panStart.y;
-      const wrapW = rs.advWrap.clientWidth, wrapH = rs.advWrap.clientHeight;
-      const sw = Math.max(1, Math.floor(wrapW / rs.zoom)), sh = Math.max(1, Math.floor(wrapH / rs.zoom));
-      let nx = rs.panStart.viewX - Math.round(dx / rs.zoom), ny = rs.panStart.viewY - Math.round(dy / rs.zoom);
-      nx = Math.min(Math.max(0, nx), Math.max(0, rs.origW - sw));
-      ny = Math.min(Math.max(0, ny), Math.max(0, rs.origH - sh));
-      rs.viewX = nx; rs.viewY = ny;
-      drawAdvancedPreview();
-    };
-    const onPanUp = (e) => {
-      if (!rs.panning) return;
-      rs.panning = false; rs.panStart = null;
-      rs.advWrap.classList.remove('op-pan-grabbing'); rs.advWrap.classList.add('op-pan-grab');
-      rs.advWrap.releasePointerCapture?.(e.pointerId);
-    };
-    rs.advWrap.addEventListener('pointerdown', onPanDown); rs.advWrap.addEventListener('pointermove', onPanMove);
-    rs.advWrap.addEventListener('pointerup', onPanUp); rs.advWrap.addEventListener('pointercancel', onPanUp); rs.advWrap.addEventListener('pointerleave', onPanUp);
+
+    rs.double.addEventListener('click', () => applyScale(2));
+    rs.onex.addEventListener('click', () => applyScale(1));
+    rs.half.addEventListener('click', () => applyScale(0.5));
+    rs.third.addEventListener('click', () => applyScale(1/3));
+
     const close = () => closeRSModal();
     rs.cancelBtn.addEventListener('click', close); rs.closeBtn.addEventListener('click', close); backdrop.addEventListener('click', close);
-    rs.calcBtn.addEventListener('click', async () => {
-      if (rs.mode !== 'advanced') return;
-      try {
-        const { cols, rows } = sampleDims();
-        if (cols<=0 || rows<=0) { showToast('No hay muestras. Ajusta el multiplicador/offset.'); return; }
-        if (cols >= MAX_OVERLAY_DIM || rows >= MAX_OVERLAY_DIM) { showToast(`Salida demasiado grande. Debe ser < ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM}.`); return; }
-        const canvas = await reconstructViaGrid(rs.img, rs.origW, rs.origH, rs.offx, rs.offy, rs.gapX, rs.gapY);
-        rs.calcCanvas = canvas; rs.calcCols = cols; rs.calcRows = rows; rs.calcReady = true; rs.applyBtn.disabled = false;
-        drawAdvancedResultPreview(); updateFooterMeta();
-        showToast(`Calculado ${cols}×${rows}. Revisa la previsualización y luego aplica.`);
-      } catch (e) { console.error(e); showToast('El cálculo falló.'); }
-    });
+
     rs.applyBtn.addEventListener('click', async () => {
       if (!rs.ov) return;
+      const W = parseInt(rs.w.value||'0',10), H = parseInt(rs.h.value||'0',10);
+      if (W<=0 || H<=0 || W>=MAX_OVERLAY_DIM || H>=MAX_OVERLAY_DIM) { showToast('Dimensiones inválidas'); return; }
       try {
-        if (rs.mode === 'simple') {
-          const W = parseInt(rs.w.value||'0',10), H = parseInt(rs.h.value||'0',10);
-          if (!Number.isFinite(W) || !Number.isFinite(H) || W<=0 || H<=0) { showToast('Dimensiones inválidas'); return; }
-          if (W >= MAX_OVERLAY_DIM || H >= MAX_OVERLAY_DIM) { showToast(`Demasiado grande. Debe ser < ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM}.`); return; }
-          await resizeOverlayImage(rs.ov, W, H);
-          closeRSModal(); showToast(`Redimensionado a ${W}×${H}.`);
-        } else {
-          if (!rs.calcReady || !rs.calcCanvas) { showToast('Calcula primero.'); return; }
-          const dataUrl = await canvasToDataURLSafe(rs.calcCanvas);
-          rs.ov.imageBase64 = dataUrl; rs.ov.imageUrl = null; rs.ov.isLocal = true;
-          await saveConfig(['overlays']);
-          clearOverlayCache(); ensureHook(); updateUI();
-          closeRSModal(); showToast(`Aplicado ${rs.calcCols}×${rs.calcRows}.`);
-        }
-      } catch (e) { console.error(e); showToast('La aplicación falló.'); }
+        await resizeOverlayImage(rs.ov, W, H);
+        closeRSModal(); showToast(`Redimensionado a ${W}×${H}.`);
+      } catch (e) { showToast('Fallo al aplicar.'); }
     });
-    rs._syncAdvancedMeta = syncAdvancedMeta; rs._syncSimpleNote = syncSimpleNote;
-    rs._setMode = (m) => { const evt = new Event('click'); (m === 'simple' ? rs.tabSimple : rs.tabAdvanced).dispatchEvent(evt); };
+
+    rs._drawPreviews = drawPreviews;
   }
 
-function openRSModal(overlay) {
+  function openRSModal(overlay) {
     if (!rs) return;
     rs.ov = overlay;
     const img = new Image();
     img.onload = () => {
       rs.img = img; rs.origW = img.width; rs.origH = img.height;
-      rs.orig.value = `${rs.origW}×${rs.origH}`; rs.w.value = String(rs.origW); rs.h.value = String(rs.origH); rs.lock.checked = true;
-      rs.zoom = 1.0; rs.mult = 4; rs.gapX = 4; rs.gapY = 4; rs.offx = 0; rs.offy = 0; rs.dotr = 1; rs.viewX = 0; rs.viewY = 0;
-      rs.bind.checked = true; rs.multRange.value = '4'; rs.multInput.value = '4'; rs.blockW.value = '4'; rs.blockH.value = '4';
-      rs.offX.value = '0'; rs.offY.value = '0'; rs.dotR.value = '1'; rs.dotRVal.textContent = '1'; rs.gridToggle.checked = true;
-      rs.calcCanvas = null; rs.calcCols = 0; rs.calcRows = 0; rs.calcReady = false; rs.applyBtn.disabled = (rs.mode === 'advanced');
-      rs._setMode('simple');
-      document.body.classList.add('op-scroll-lock'); rs.backdrop.classList.add('show'); rs.modal.classList.add('show');
-      rs._drawSimplePreview?.(); rs._drawAdvancedPreview?.(); rs._drawAdvancedResultPreview?.(); rs._syncAdvancedMeta?.(); rs._syncSimpleNote?.();
-      const setFooterNow = () => {
-        if (rs.mode === 'advanced') {
-          const { cols, rows } = (function(){ const x = Math.floor((rs.origW - rs.offx) / rs.gapX); const y = Math.floor((rs.origH - rs.offy) / rs.gapY); return { cols: Math.max(0,x), rows: Math.max(0,y) };})();
-          rs.meta.textContent = (cols>0&&rows>0) ? `Muestras: ${cols} × ${rows} | Salida: ${cols}×${rows}${(cols>=MAX_OVERLAY_DIM||rows>=MAX_OVERLAY_DIM)?` (excede el límite: < ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM})`:''}` : 'Ajusta el multiplicador/offset hasta que los puntos se centren.';
-        } else {
-          const W = parseInt(rs.w.value||'0',10); const H = parseInt(rs.h.value||'0',10);
-          const ok = Number.isFinite(W)&&Number.isFinite(H)&&W>0&&H>0;
-          const limit = (W>=MAX_OVERLAY_DIM||H>=MAX_OVERLAY_DIM);
-          rs.meta.textContent = ok ? (limit ? `Objetivo: ${W}×${H} (excede el límite: < ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM})` : `Objetivo: ${W}×${H} (OK)`) : 'Ingresa un ancho y alto positivos.';
-        }
-      };
-      setFooterNow();
-      const onResize = () => {
-        if (rs.mode === 'simple') rs._drawSimplePreview?.();
-        else { rs._drawAdvancedPreview?.(); rs._drawAdvancedResultPreview?.(); }
-      };
-      rs._resizeHandler = onResize;
-      window.addEventListener('resize', onResize);
+      rs.orig.value = `${rs.origW}×${rs.origH}`;
+      rs.w.value = String(rs.origW); rs.h.value = String(rs.origH);
+      rs.lock.checked = true;
+      document.body.classList.add('op-scroll-lock');
+      rs.backdrop.classList.add('show');
+      rs.modal.classList.add('show');
+      rs._drawPreviews();
     };
     img.src = overlay.imageBase64;
   }
 
   function closeRSModal() {
     if (!rs) return;
-    window.removeEventListener('resize', rs._resizeHandler || (()=>{}));
     rs.backdrop.classList.remove('show');
     rs.modal.classList.remove('show');
-    rs.ov = null;
-    rs.img = null;
+    rs.ov = null; rs.img = null;
     document.body.classList.remove('op-scroll-lock');
   }
 
@@ -3676,40 +3441,6 @@ function openRSModal(overlay) {
     clearOverlayCache();
     ensureHook();
     updateUI();
-  }
-
-  async function reconstructViaGrid(img, origW, origH, offx, offy, gapX, gapY) {
-    const srcCanvas = createCanvas(origW, origH);
-    const sctx = srcCanvas.getContext('2d', { willReadFrequently: true });
-    sctx.imageSmoothingEnabled = false;
-    sctx.drawImage(img, 0, 0);
-    const srcData = sctx.getImageData(0,0,origW,origH).data;
-    const cols = Math.floor((origW - offx) / gapX);
-    const rows = Math.floor((origH - offy) / gapY);
-    if (cols <= 0 || rows <= 0) throw new Error('No samples available with current offset/gap');
-    const outCanvas = createHTMLCanvas(cols, rows);
-    const octx = outCanvas.getContext('2d');
-    const out = octx.createImageData(cols, rows);
-    const odata = out.data;
-    const cx0 = offx + gapX / 2;
-    const cy0 = offy + gapY / 2;
-    const clamp = (v, min, max) => Math.min(Math.max(v, min), max);
-    for (let ry=0; ry<rows; ry++) {
-      for (let rx=0; rx<cols; rx++) {
-        const sx = Math.round(clamp(cx0 + rx*gapX, 0, origW-1));
-        const sy = Math.round(clamp(cy0 + ry*gapY, 0, origH-1));
-        const si = (sy*origW + sx) * 4;
-        const r = srcData[si], g = srcData[si+1], b = srcData[si+2], a = srcData[si+3];
-        const oi = (ry*cols + rx) * 4;
-        if (a === 0) {
-          odata[oi] = 0; odata[oi+1] = 0; odata[oi+2] = 0; odata[oi+3] = 0;
-        } else {
-          odata[oi] = r; odata[oi+1] = g; odata[oi+2] = b; odata[oi+3] = 255;
-        }
-      }
-    }
-    octx.putImageData(out, 0, 0);
-    return outCanvas;
   }
 
 function main() {
