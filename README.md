@@ -1,4 +1,4 @@
-![Banner](social-preview.png)
+![Banner](img/social-preview.png)
 
 # VoX - Overlay Pro cho Wplace (Bản Việt hóa)
 
@@ -62,7 +62,7 @@ Các nút trên đầu panel điều khiển cách overlay hiển thị:
 
 > **💡 Mẹo:** Nếu vừa đổi độ trong suốt, vị trí, hoặc áp filter mà chưa thấy cập nhật, chỉ cần di chuyển bản đồ một chút hoặc đặt thử 1 pixel để màn hình refresh lại.
 
-![Ảnh minh họa](EXAMPLE.png)
+![Ảnh minh họa](img/EXAMPLE.png)
 
 ---
 
