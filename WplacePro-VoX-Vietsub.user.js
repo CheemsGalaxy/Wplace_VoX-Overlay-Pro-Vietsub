@@ -1,11 +1,11 @@
 // ==UserScript==
-// @name         Wplace Overlay Pro Modified By @SrCratier
+// @name         Wplace Overlay Pro (Việt hóa) - Modified By @SrCratier
 // @namespace    http://tampermonkey.net/
-// @version      5.3.0
-// @description  Overlays tiles on wplace.live. Can also resize, and color-match your overlay to wplace's palette. Make sure to comply with the site's Terms of Service, and rules! This script is not affiliated with Wplace.live in any way, use at your risk. This script is not affiliated with TamperMonkey. The author of this userscript is not responsible for any damages, issues, loss of data, or punishment that may occur as a result of using this script. This script is provided "as is" under GPLv3.
-// @author       shinkonet (Modificado por @SrCratier)
-// @updateURL    https://raw.githubusercontent.com/SrCratier/Wplace_VoX-Overlay-Pro/main/WplacePro-VoX.user.js
-// @downloadURL  https://raw.githubusercontent.com/SrCratier/Wplace_VoX-Overlay-Pro/main/WplacePro-VoX.user.js
+// @version      5.3.0-vi
+// @description  [Vietsub by CheemsGalaxy] Overlays tiles on wplace.live. Can also resize, and color-match your overlay to wplace's palette. Make sure to comply with the site's Terms of Service, and rules! This script is not affiliated with Wplace.live in any way, use at your risk. This script is not affiliated with TamperMonkey. The author of this userscript is not responsible for any damages, issues, loss of data, or punishment that may occur as a result of using this script. This script is provided "as is" under GPLv3.
+// @author       shinkonet (Modificado por @SrCratier), Vietsub by CheemsGalaxy
+// @updateURL    https://raw.githubusercontent.com/CheemsGalaxy/Wplace_VoX-Overlay-Pro-Vietsub/main/WplacePro-VoX.user.js
+// @downloadURL  https://raw.githubusercontent.com/CheemsGalaxy/Wplace_VoX-Overlay-Pro-Vietsub/main/WplacePro-VoX.user.js
 // @match        https://wplace.live/*
 // @license      GPLv3
 // @grant        GM_setValue
@@ -153,9 +153,9 @@
   let lastKnownAvailableColors = new Set();
 
   const DONATORS = [
-    { name: "kleyder1205 ", contribution: "- Donó 5 USD   :D ❤️" },
-    { name: "Nuntius ", contribution: "- Donó 5 USD   :D ❤️" },
-    { name: "espressos work ", contribution: "- Donó 5 USD   :D ❤️" },
+    { name: "kleyder1205 ", contribution: "- Đã donate 5 USD   :D ❤️" },
+    { name: "Nuntius ", contribution: "- Đã donate 5 USD   :D ❤️" },
+    { name: "espressos work ", contribution: "- Đã donate 5 USD   :D ❤️" },
   ];
 
   function uid() { return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`; }
@@ -284,7 +284,7 @@
 
     if (wImg >= MAX_OVERLAY_DIM || hImg >= MAX_OVERLAY_DIM) {
       tooLargeOverlays.add(ov.id);
-      showToast(`Overlay "${ov.name}" skipped: image too large.`);
+      showToast(`Bỏ qua overlay "${ov.name}": ảnh quá lớn.`);
       return null;
     }
 
@@ -426,7 +426,7 @@
 
     if (wImg >= MAX_OVERLAY_DIM || hImg >= MAX_OVERLAY_DIM) {
       tooLargeOverlays.add(ov.id);
-      showToast(`Overlay "${ov.name}" skipped: image too large.`);
+      showToast(`Bỏ qua overlay "${ov.name}": ảnh quá lớn.`);
       return null;
     }
 
@@ -682,7 +682,7 @@ function showToast(message, duration = 3000) {
                     await saveConfig(['overlays']); clearOverlayCache();
                     config.autoCapturePixelUrl = false; await saveConfig(['autoCapturePixelUrl']);
                     const c = extractPixelCoords(ov.pixelUrl);
-                    showToast(`Ancla establecida para "${ov.name}": chunk ${c.chunk1}/${c.chunk2} en (${c.posX}, ${c.posY}).`);
+                    showToast(`Đã đặt mốc neo cho "${ov.name}": chunk ${c.chunk1}/${c.chunk2} tại (${c.posX}, ${c.posY}).`);
                 }
             }
             if (config.isSettingCopyPoint) {
@@ -695,7 +695,7 @@ function showToast(message, duration = 3000) {
                 };
                 const pointBeingSet = config.isSettingCopyPoint;
                 config[pointBeingSet === 'A' ? 'copyPointA' : 'copyPointB'] = point;
-                showToast(`Punto ${pointBeingSet} fijado en (${point.absX}, ${point.absY})`);
+                showToast(`Đã đặt điểm ${pointBeingSet} tại (${point.absX}, ${point.absY})`);
                 config.isSettingCopyPoint = null;
                 const keysToSave = ['copyPointA', 'copyPointB', 'isSettingCopyPoint'];
                 if (config.copyPointA && config.copyPointB) {
@@ -705,9 +705,9 @@ function showToast(message, duration = 3000) {
                     if (config.showOverlay) {
                         config.showOverlay = false;
                         keysToSave.push('showOverlay');
-                        showToast('Área de previsualización activada. Overlay desactivado.');
+                        showToast('Đã bật xem trước khu vực. Overlay đã tắt.');
                     } else {
-                        showToast('Área de previsualización activada.');
+                        showToast('Đã bật xem trước khu vực.');
                     }
                     clearOverlayCache();
                 }
@@ -798,7 +798,7 @@ function showToast(message, duration = 3000) {
   function detachHook() { if (!hookInstalled) return; page.fetch = NATIVE_FETCH; window.fetch = NATIVE_FETCH; hookInstalled = false; }
 
   const config = {
-    language: 'en',
+    language: 'vi',
     overlays:[],
     activeOverlayId: null,
     overlayMode: 'minify',
@@ -836,42 +836,25 @@ function showToast(message, duration = 3000) {
   };
   const CONFIG_KEYS = Object.keys(config);
   const i18n = {
-    en: {
-        title: "VoX - Overlay Pro", settings: "Settings", toggle: "Toggle Panel",
-        overlayBtn: "Overlay", modeBtn: "Mode", errorsBtn: "Show Errors", posBtn: "Set Position",
-        tabOverlays: "Overlays", tabEditor: "Editor", tabTools: "Tools",
-        add: "+ Add", import: "Import", export: "Export",
-        editorPlaceholder: "Select an overlay to edit.", name: "Name", mode: "Mode",
-        modeStd: "Standard (Recommended)", modeEnh: "Enhanced (Pixel Art)", modePho: "Photorealistic (Dithering)",
-        image: "Image", load: "Load", dropzone: "Drag here or click to browse.",
-        opacity: "Opacity", offsetX: "Offset X", offsetY: "Y",
-        copyCanvas: "Copy Canvas", setPointA: "Set Point A", setPointB: "Set Point B",
-        fineTune: "Fine Tune:", pointA: "Point A", pointB: "Point B",
-        previewArea: "Preview Area", download: "Download", showProgress: "Show Overlay Progress",
-        genSettings: "General Settings", uiTheme: "UI Theme", lightDark: "Light / Dark",
-        panelAlpha: "Panel Transparency",
-        support: "This project is free, but I would appreciate a donation to support development ❤️",
-        thanks: "❤️ See Acknowledgements", langToggle: "ES"
-    },
-    es: {
-        title: "VoX - Overlay Pro", settings: "Ajustes", toggle: "Plegar/Desplegar",
-        overlayBtn: "Overlay", modeBtn: "Modo", errorsBtn: "Mostrar Errores", posBtn: "Fijar Posición",
-        tabOverlays: "Overlays", tabEditor: "Editor", tabTools: "Herramientas",
-        add: "+ Añadir", import: "Importar", export: "Exportar",
-        editorPlaceholder: "Selecciona un overlay para editarlo.", name: "Nombre", mode: "Modo",
-        modeStd: "Estándar (Recomendado)", modeEnh: "Mejorado (Pixel Art)", modePho: "Fotorealista (Dithering)",
-        image: "Imagen", load: "Cargar", dropzone: "Arrastra aquí o haz clic para buscar.",
-        opacity: "Opacidad", offsetX: "Offset X", offsetY: "Y",
-        copyCanvas: "Copiar Lienzo", setPointA: "Fijar Punto A", setPointB: "Fijar Punto B",
-        fineTune: "Ajuste Fino:", pointA: "Punto A", pointB: "Punto B",
-        previewArea: "Visualizar Área", download: "Descargar", showProgress: "Mostrar Progreso del Overlay",
-        genSettings: "Ajustes Generales", uiTheme: "Tema de la Interfaz", lightDark: "Claro / Oscuro",
-        panelAlpha: "Transparencia del Panel",
-        support: "Este proyecto es gratuito, pero agradecería una donación para apoyar el desarrollo ❤️",
-        thanks: "❤️ Ver Agradecimientos", langToggle: "EN"
+    vi: {
+        title: "VoX - Overlay Pro", settings: "Cài đặt", toggle: "Thu gọn/Mở rộng Panel",
+        overlayBtn: "Overlay", modeBtn: "Chế độ", errorsBtn: "Hiện lỗi", posBtn: "Đặt vị trí",
+        tabOverlays: "Overlay", tabEditor: "Chỉnh sửa", tabTools: "Công cụ",
+        add: "+ Thêm", import: "Nhập", export: "Xuất",
+        editorPlaceholder: "Chọn một overlay để chỉnh sửa.", name: "Tên", mode: "Chế độ",
+        modeStd: "Tiêu chuẩn (Khuyên dùng)", modeEnh: "Nâng cao (Pixel Art)", modePho: "Chân thực (Dithering)",
+        image: "Ảnh", load: "Tải", dropzone: "Kéo ảnh vào đây hoặc bấm để chọn tệp.",
+        opacity: "Độ trong suốt", offsetX: "Offset X", offsetY: "Y",
+        copyCanvas: "Sao chép Canvas", setPointA: "Đặt điểm A", setPointB: "Đặt điểm B",
+        fineTune: "Tinh chỉnh:", pointA: "Điểm A", pointB: "Điểm B",
+        previewArea: "Xem trước khu vực", download: "Tải xuống", showProgress: "Hiện tiến độ Overlay",
+        genSettings: "Cài đặt chung", uiTheme: "Giao diện", lightDark: "Sáng / Tối",
+        panelAlpha: "Độ trong suốt Panel",
+        support: "Dự án này miễn phí, nhưng mình sẽ rất biết ơn nếu bạn ủng hộ để duy trì phát triển ❤️",
+        thanks: "❤️ Xem lời cảm ơn", langToggle: "VI"
     }
   };
-  function t(key) { return i18n[config.language][key] || key; }
+  function t(key) { return (i18n[config.language] || i18n.vi)[key] || key; }
 
   async function loadConfig() {
     try {
@@ -1007,7 +990,7 @@ function injectStyles() {
       .op-preview { width: 100%; height: 90px; background: var(--op-bg); display: flex; align-items: center; justify-content: center; border: 2px dashed var(--op-border); border-radius: 10px; overflow: hidden; position: relative; cursor: pointer; transition: all 0.2s ease; }
       .op-preview:hover, .op-preview.drop-highlight { border-color: var(--op-accent); background: color-mix(in srgb, var(--op-accent) 8%, transparent); }
       .op-preview img, .op-preview canvas { max-width: 100%; max-height: 100%; display: block; pointer-events: none; image-rendering: pixelated; }
-      .op-preview .op-drop-hint { position: absolute; bottom: 6px; right: 8px; font-size: 11px; color: var(--op-muted); pointer-events: none; }
+      .op-preview .op-drop-hint { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 85%; text-align: center; font-size: 11px; color: var(--op-muted); pointer-events: none; }
 
       .op-icon-btn { background: var(--op-btn); color: var(--op-text); border: 1px solid var(--op-btn-border); border-radius: 10px; width: 34px; height: 34px; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; transition: all 0.2s ease; }
       .op-icon-btn:hover { background: var(--op-btn-hover); border-color: var(--op-accent); }
@@ -1326,17 +1309,19 @@ function injectStyles() {
 
 panel.innerHTML = `
   <div class="op-header" id="op-header">
-    <h3>${t('title')}<span style="font-size: 13px; color: var(--op-muted); font-weight: 500; margin-left: 8px;">-_-/</span></h3>
+    <div style="display:flex; flex-direction:column; line-height:1.2;">
+      <h3 style="margin:0;">${t('title')}<span style="font-size: 13px; color: var(--op-muted); font-weight: 500; margin-left: 8px;">-_-/</span></h3>
+      <span style="font-size: 10px; color: var(--op-muted);">Vietsub by CheemsGalaxy</span>
+    </div>
     <div class="op-header-actions">
-        <button class="op-hdr-btn" id="op-lang-toggle" title="EN/ES">${t('langToggle')}</button>
         <button class="op-hdr-btn" id="op-main-settings-btn" title="${t('settings')}">⚙️</button>
         <button class="op-toggle-btn" id="op-panel-toggle" title="${t('toggle')}">▾</button>
     </div>
   </div>
       <div class="op-content" id="op-content">
         <div class="op-global-controls">
-            <button class="op-button" id="op-show-overlay-toggle">${t('overlayBtn')}: ON</button>
-            <button class="op-button" id="op-mode-toggle">${t('modeBtn')}: Minify</button>
+            <button class="op-button" id="op-show-overlay-toggle">${t('overlayBtn')}: BẬT</button>
+            <button class="op-button" id="op-mode-toggle">${t('modeBtn')}: Thu nhỏ</button>
             <button class="op-button" id="op-show-errors-toggle">${t('errorsBtn')}: OFF</button>
             <button class="op-button" id="op-autocap-toggle">${t('posBtn')}: OFF</button>
         </div>
@@ -1411,9 +1396,9 @@ panel.innerHTML = `
                             <img id="op-image-preview" alt="No image">
                         </div>
                         <div class="op-row" id="op-cc-btn-row" style="display:none; justify-content:space-around; gap:8px; flex-wrap:wrap; margin-top:8px;">
-                            <button class="op-button" id="op-download-overlay" title="Download Image">Save 💾</button>
-                            <button class="op-button" id="op-open-resize" title="Resize">Resize</button>
-                            <button class="op-button" id="op-open-cc" title="Color Tool">Color Tools</button>
+                            <button class="op-button" id="op-download-overlay" title="Tải ảnh xuống">Save 💾</button>
+                            <button class="op-button" id="op-open-resize" title="Đổi kích thước">Đổi kích thước</button>
+                            <button class="op-button" id="op-open-cc" title="Công cụ màu">Color Tools</button>
                         </div>
                     </div>
                     <div>
@@ -1428,10 +1413,10 @@ panel.innerHTML = `
                         <div class="op-row space">
                          <span class="op-muted" id="op-offset-indicator">${t('offsetX')} 0, ${t('offsetY')} 0</span>
                           <div class="op-nudge-controls" style="text-align: right;">
-                            <button class="op-icon-btn" id="op-nudge-left" title="Left">←</button>
-                            <button class="op-icon-btn" id="op-nudge-down" title="Down">↓</button>
-                            <button class="op-icon-btn" id="op-nudge-up" title="Up">↑</button>
-                           <button class="op-icon-btn" id="op-nudge-right" title="Right">→</button>
+                            <button class="op-icon-btn" id="op-nudge-left" title="Trái">←</button>
+                            <button class="op-icon-btn" id="op-nudge-down" title="Xuống">↓</button>
+                            <button class="op-icon-btn" id="op-nudge-up" title="Lên">↑</button>
+                           <button class="op-icon-btn" id="op-nudge-right" title="Phải">→</button>
                         </div>
                       </div>
                     </div>
@@ -1463,10 +1448,10 @@ panel.innerHTML = `
                              </div>
                          </div>
                          <div class="op-nudge-controls" style="text-align: right; margin-top:4px;">
-                            <button class="op-icon-btn" id="op-nudge-copy-left" title="Left">←</button>
-                            <button class="op-icon-btn" id="op-nudge-copy-down" title="Down">↓</button>
-                            <button class="op-icon-btn" id="op-nudge-copy-up" title="Up">↑</button>
-                            <button class="op-icon-btn" id="op-nudge-copy-right" title="Right">→</button>
+                            <button class="op-icon-btn" id="op-nudge-copy-left" title="Trái">←</button>
+                            <button class="op-icon-btn" id="op-nudge-copy-down" title="Xuống">↓</button>
+                            <button class="op-icon-btn" id="op-nudge-copy-up" title="Lên">↑</button>
+                            <button class="op-icon-btn" id="op-nudge-copy-right" title="Phải">→</button>
                          </div>
                     </div>
                     <div class="op-row space" style="margin-top: 8px;">
@@ -1512,6 +1497,7 @@ panel.innerHTML = `
         </div>
          <button class="op-button op-show-donators">${t('thanks')}</button>
          <div class="op-donators-list-wrap"></div>
+         <p style="text-align:center; font-size:11px; color:var(--op-muted); margin: 4px 0 0;">Vietsub by CheemsGalaxy<br><a href="https://github.com/CheemsGalaxy" target="_blank" rel="noopener noreferrer" style="color:var(--op-muted);">github.com/CheemsGalaxy</a></p>
     `;
     document.body.appendChild(settingsModal);
 
@@ -1524,43 +1510,43 @@ panel.innerHTML = `
         colorAnalysisPanel.id = 'op-color-analysis-panel';
     colorAnalysisPanel.innerHTML = `
     <div class="op-ca-header" id="op-ca-header-drag">
-        <span>Progreso de Colores</span>
+        <span>Tiến độ màu</span>
         <div class="op-ca-settings-wrap">
-            <button class="op-ca-settings-btn" id="op-ca-settings-btn" title="Ajustes de Progreso">⚙️</button>
-            <button class="op-ca-settings-btn" id="op-ca-toggle-collapse" title="Plegar/Desplegar" style="margin-left: 5px;">▾</button>
+            <button class="op-ca-settings-btn" id="op-ca-settings-btn" title="Cài đặt Tiến độ">⚙️</button>
+            <button class="op-ca-settings-btn" id="op-ca-toggle-collapse" title="Thu gọn/Mở rộng" style="margin-left: 5px;">▾</button>
         </div>
     </div>
     <div class="op-ca-list" id="op-ca-list-content">
-        <span class="op-muted" style="text-align: center; padding: 20px 0;">Selecciona un overlay y haz clic en "Mostrar Progreso".</span>
+        <span class="op-muted" style="text-align: center; padding: 20px 0;">Chọn một overlay rồi bấm "Hiện tiến độ Overlay".</span>
     </div>
     <div class="op-ca-footer" id="op-ca-footer">
         <div class="op-ca-total-progress">
-            <span>Progreso Total:</span>
+            <span>Tổng tiến độ:</span>
             <span id="op-ca-total-percentage">0%</span>
         </div>
         <div class="op-ca-main-actions">
-            <button class="op-button" id="op-ca-apply-filter">Apply</button>
-            <button class="op-button" id="op-ca-toggle-filters">⚙️ Filtros</button>
+            <button class="op-button" id="op-ca-apply-filter">Áp dụng</button>
+            <button class="op-button" id="op-ca-toggle-filters">⚙️ Bộ lọc</button>
         </div>
     </div>
     <div class="op-ca-filters-pane" id="op-ca-filters-pane">
         <div class="op-ca-filter-actions">
-            <button class="op-button" id="op-ca-mark-available">Disponibles</button>
-            <button class="op-button" id="op-ca-mark-all">Marcar todo</button>
-            <button class="op-button" id="op-ca-mark-none">Desmarcar</button>
-            <button class="op-button" id="op-ca-show-all">Restaurar</button>
+            <button class="op-button" id="op-ca-mark-available">Đang có</button>
+            <button class="op-button" id="op-ca-mark-all">Chọn tất cả</button>
+            <button class="op-button" id="op-ca-mark-none">Bỏ chọn</button>
+            <button class="op-button" id="op-ca-show-all">Khôi phục</button>
         </div>
         <div class="op-ca-controls">
             <div class="op-ca-control-row">
-                <label>Mostrar nombres</label>
+                <label>Hiện tên màu</label>
                 <div class="op-switch" id="op-ca-show-names-toggle"></div>
             </div>
             <div class="op-ca-control-row">
-                <label>Mostrar progreso</label>
+                <label>Hiện tiến độ</label>
                 <div class="op-switch" id="op-ca-show-progress-toggle"></div>
             </div>
             <div class="op-ca-control-row">
-                <label>Solo faltantes</label>
+                <label>Chỉ hiện màu còn thiếu</label>
                 <div class="op-switch" id="op-ca-show-remaining-toggle"></div>
             </div>
         </div>
@@ -1572,30 +1558,17 @@ panel.innerHTML = `
     caSettingsModal.id = 'op-ca-settings-modal';
     caSettingsModal.className = 'op-modal';
     caSettingsModal.innerHTML = `
-        <h3>Ajustes de Progreso</h3>
+        <h3>Cài đặt Tiến độ</h3>
         <div class="op-ca-controls" style="display: flex; flex-direction: column; gap: 12px;">
             <div class="op-ca-control-row">
-                <label>Ordenar por cantidad</label>
+                <label>Sắp xếp theo số lượng</label>
                 <div class="op-switch" id="op-ca-sort-toggle"></div>
             </div>
 
         </div>
         <hr style="border-color: var(--op-border); margin: 12px 0;">
-        <label>Transparencia del Panel</label>
+        <label>Độ trong suốt Panel</label>
         <input type="range" id="op-ca-alpha-slider" min="0.2" max="1" step="0.05">
-        <div class="op-donation-section">
-            <p>Este proyecto es gratuito, pero agradecería una donación para apoyar el proyecto ❤️</p>
-            <div class="op-donation-info">
-                <span>Binance ID:</span>
-                <code>851390091</code>
-            </div>
-            <div class="op-donation-info">
-                <span>PayPal:</span>
-                <code>@srcratier</code>
-            </div>
-        </div>
-         <button class="op-button op-show-donators">❤️ Ver Agradecimientos</button>
-         <div class="op-donators-list-wrap"></div>
     `;
     document.body.appendChild(caSettingsModal);
 
@@ -1624,15 +1597,15 @@ function rebuildOverlayListUI() {
     const item = document.createElement('div');
     const isActive = ov.id === config.activeOverlayId;
     item.className = 'op-item' + (isActive ? ' active' : '');
-    const localTag = ov.isLocal ? ' (local)' : (!ov.imageBase64 ? ' (sin imagen)' : '');
-    const title = (ov.name || '(sin nombre)') + localTag;
+    const localTag = ov.isLocal ? ' (cục bộ)' : (!ov.imageBase64 ? ' (chưa có ảnh)' : '');
+    const title = (ov.name || '(chưa đặt tên)') + localTag;
 
     item.innerHTML = `
       <div class="op-row" style="width:100%;">
-        <input type="radio" name="op-active" ${isActive ? 'checked' : ''} title="Establecer como activa"/>
-        <input type="checkbox" ${ov.enabled ? 'checked' : ''} title="Activar/Desactivar"/>
+        <input type="radio" name="op-active" ${isActive ? 'checked' : ''} title="Đặt làm overlay đang chọn"/>
+        <input type="checkbox" ${ov.enabled ? 'checked' : ''} title="Bật/Tắt"/>
         <div class="op-item-name" title="${title}">${title}</div>
-        <button class="op-icon-btn op-trash-btn" title="Eliminar superposición">🗑️</button>
+        <button class="op-icon-btn op-trash-btn" title="Xóa overlay">🗑️</button>
       </div>
     `;
 
@@ -1659,7 +1632,7 @@ function rebuildOverlayListUI() {
 
     trashBtn.addEventListener('click', async (e) => {
       e.stopPropagation();
-      if (!confirm(`¿Eliminar la superposición "${ov.name || '(sin nombre)'}"?`)) return;
+      if (!confirm(`Xóa overlay "${ov.name || '(chưa đặt tên)'}"?`)) return;
       const idx = config.overlays.findIndex(o => o.id === ov.id);
       if (idx >= 0) {
         config.overlays.splice(idx, 1);
@@ -1797,7 +1770,7 @@ async function processImageToPalette(base64, mode = 'standard') {
 
   async function setOverlayImageFromURL(ov, url) {
     const mode = document.getElementById('op-color-mode').value;
-    showToast(`Procesando (${mode === 'euclidean' ? 'Matemático' : 'Natural'})...`);
+    showToast(`Đang xử lý (${mode === 'euclidean' ? 'Toán học' : 'Tự nhiên'})...`);
 
     const rawBase64 = await urlToDataURL(url);
     const processedBase64 = await processImageToPalette(rawBase64, mode);
@@ -1815,15 +1788,15 @@ async function processImageToPalette(base64, mode = 'standard') {
 
     document.getElementById('op-color-mode').value = 'standard';
 
-    showToast(`Imagen procesada y cargada. Haz clic para establecer el ancla.`);
+    showToast(`Đã xử lý và tải ảnh xong. Bấm vào bản đồ để đặt mốc neo.`);
   }
 
 async function setOverlayImageFromFile(ov, file) {
-    if (!file || !file.type || !file.type.startsWith('image/')) { alert('Por favor, elige un archivo de imagen.'); return; }
-    if (!confirm('¡Los PNG locales no se pueden exportar/compartir! ¿Estás seguro?')) return;
+    if (!file || !file.type || !file.type.startsWith('image/')) { alert('Vui lòng chọn một tệp ảnh.'); return; }
+    if (!confirm('Ảnh PNG cục bộ không thể xuất/chia sẻ! Bạn có chắc chắn không?')) return;
 
     const mode = document.getElementById('op-color-mode').value;
-    showToast(`Procesando local (${mode === 'euclidean' ? 'Matemático' : 'Natural'})...`);
+    showToast(`Đang xử lý ảnh cục bộ (${mode === 'euclidean' ? 'Toán học' : 'Tự nhiên'})...`);
 
     const rawBase64 = await fileToDataURL(file);
     const processedBase64 = await processImageToPalette(rawBase64, mode);
@@ -1841,11 +1814,11 @@ async function setOverlayImageFromFile(ov, file) {
 
     document.getElementById('op-color-mode').value = 'standard';
 
-    showToast(`Imagen local procesada. Haz clic para establecer el ancla.`);
+    showToast(`Đã xử lý ảnh cục bộ xong. Bấm vào bản đồ để đặt mốc neo.`);
   }
 
   async function importOverlayFromJSON(jsonText) {
-    let obj; try { obj = JSON.parse(jsonText); } catch { alert('JSON inválido'); return; }
+    let obj; try { obj = JSON.parse(jsonText); } catch { alert('JSON không hợp lệ'); return; }
     const arr = Array.isArray(obj) ? obj : [obj];
     let imported = 0, failed = 0;
     for (const item of arr) {
@@ -1860,34 +1833,34 @@ async function setOverlayImageFromFile(ov, file) {
         const base64 = await urlToDataURL(imageUrl);
         const ov = { id: uid(), name, enabled: true, imageUrl, imageBase64: base64, isLocal: false, pixelUrl, offsetX, offsetY, opacity };
         config.overlays.push(ov); imported++;
-      } catch (e) { console.error('Importación fallida para', imageUrl, e); failed++; }
+      } catch (e) { console.error('Nhập thất bại cho', imageUrl, e); failed++; }
     }
     if (imported > 0) {
       config.activeOverlayId = config.overlays[config.overlays.length - 1].id;
       await saveConfig(['overlays', 'activeOverlayId']); clearOverlayCache(); ensureHook(); updateUI();
     }
-    alert(`Importación finalizada. Importados: ${imported}${failed ? `, Fallidos: ${failed}` : ''}`);
+    alert(`Nhập hoàn tất. Đã nhập: ${imported}${failed ? `, Thất bại: ${failed}` : ''}`);
   }
 
   function exportActiveOverlayToClipboard() {
     const ov = getActiveOverlay();
-    if (!ov) { alert('No hay ninguna superposición activa seleccionada.'); return; }
-    if (ov.isLocal || !ov.imageUrl) { alert('Esta superposición usa una imagen local y no se puede exportar. Por favor, aloja la imagen en línea y establece una URL.'); return; }
+    if (!ov) { alert('Chưa có overlay nào đang được chọn.'); return; }
+    if (ov.isLocal || !ov.imageUrl) { alert('Overlay này dùng ảnh cục bộ nên không thể xuất. Vui lòng tải ảnh lên mạng và dùng URL.'); return; }
     const payload = { version: 1, name: ov.name, imageUrl: ov.imageUrl, pixelUrl: ov.pixelUrl ?? null, offsetX: ov.offsetX, offsetY: ov.offsetY, opacity: ov.opacity };
     const text = JSON.stringify(payload, null, 2);
-    copyText(text).then(() => alert('¡JSON de la superposición copiado al portapapeles!')).catch(() => { prompt('Copia el siguiente JSON:', text); });
+    copyText(text).then(() => alert('Đã sao chép JSON của overlay vào clipboard!')).catch(() => { prompt('Sao chép đoạn JSON sau:', text); });
   }
   function copyText(text) { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text); return Promise.reject(new Error('Clipboard API not available')); }
 
   async function createCanvasCopy() {
     const { copyPointA: pA, copyPointB: pB } = config;
     if (!pA || !pB) {
-        showToast('Debes fijar los puntos A y B primero.');
+        showToast('Bạn cần đặt điểm A và B trước.');
         return;
     }
 
     if (config.showOverlay && config.overlayMode !== 'original') {
-        showToast('Aviso: Se está copiando el lienzo original sin la superposición.', 4000);
+        showToast('Lưu ý: Đang sao chép canvas gốc, không có overlay.', 4000);
     }
 
     const minX = Math.min(pA.absX, pB.absX);
@@ -1899,7 +1872,7 @@ async function setOverlayImageFromFile(ov, file) {
     const H = maxY - minY + 1;
 
     if (W > 50000 || H > 50000) {
-        showToast(`El área es demasiado grande (${W}x${H}). El máximo es 50000px por lado.`);
+        showToast(`Khu vực quá lớn (${W}x${H}). Tối đa 50000px mỗi cạnh.`);
         return;
     }
 
@@ -1918,12 +1891,12 @@ async function setOverlayImageFromFile(ov, file) {
     }
 
     if (missingTiles.length > 0) {
-        showToast(`Área incompleta. Por favor, mueva el mapa sobre toda la zona seleccionada para que se carguen los datos y vuelva a intentarlo.`);
+        showToast(`Khu vực chưa tải đủ dữ liệu. Vui lòng di chuyển bản đồ qua toàn bộ vùng đã chọn để tải dữ liệu, rồi thử lại.`);
         console.log("Faltan los siguientes tiles:", missingTiles);
         return;
     }
 
-    showToast(`Copiando ${W}x${H}px...`);
+    showToast(`Đang sao chép ${W}x${H}px...`);
 
     const canvas = createHTMLCanvas(W, H);
     const ctx = canvas.getContext('2d');
@@ -1957,7 +1930,7 @@ async function setOverlayImageFromFile(ov, file) {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
-    showToast(`¡Copia del lienzo descargada!`);
+    showToast(`Đã tải xuống bản sao canvas!`);
 
     if (config.copyPreviewActive) {
         config.copyPreviewActive = false;
@@ -1972,7 +1945,7 @@ async function setOverlayImageFromFile(ov, file) {
       const targetKey = config.copyNudgeTarget === 'A' ? 'copyPointA' : 'copyPointB';
       const point = config[targetKey];
       if (!point) {
-          showToast(`El punto ${config.copyNudgeTarget} no está fijado.`);
+          showToast(`Điểm ${config.copyNudgeTarget} chưa được đặt.`);
           return;
       }
       point.absX += dx;
@@ -1991,12 +1964,6 @@ async function setOverlayImageFromFile(ov, file) {
 function addEventListeners() {
     const $ = (id) => document.getElementById(id);
 
-    $('op-lang-toggle').addEventListener('click', async (e) => {
-        e.stopPropagation();
-        config.language = config.language === 'en' ? 'es' : 'en';
-        await saveConfig(['language']);
-        location.reload();
-    });
     $('op-theme-toggle').addEventListener('click', async (e) => {
         e.stopPropagation();
         config.theme = config.theme === 'light' ? 'dark' : 'light';
@@ -2010,15 +1977,15 @@ applyTheme();
     $('op-show-overlay-toggle').addEventListener('click', () => {
         if (config.showOverlay) {
             if (config.autoCapturePixelUrl) {
-                showToast('⚠️ No puedes apagar el Overlay mientras "Set Position" está activo.', 3000);
+                showToast('⚠️ Không thể tắt Overlay khi "Set Position" đang bật.', 3000);
                 return;
             }
             if (config.isSettingCopyPoint) {
-                showToast('⚠️ No puedes apagar el Overlay mientras fijas un punto de copia.', 3000);
+                showToast('⚠️ Không thể tắt Overlay khi đang chọn điểm sao chép.', 3000);
                 return;
             }
             if (config.copyPreviewActive) {
-                showToast('⚠️ Desactiva "Visualizar Área" primero para controlar el Overlay manualmente.', 3000);
+                showToast('⚠️ Hãy tắt "Xem trước khu vực" trước để điều khiển Overlay thủ công.', 3000);
                 return;
             }
         }
@@ -2028,7 +1995,7 @@ applyTheme();
         clearOverlayCache();
         ensureHook();
         updateUI();
-        showToast('Cambios aplicados. Mueve el mapa o pon un píxel para verlos.');
+        showToast('Đã áp dụng thay đổi. Di chuyển bản đồ hoặc đặt một pixel để xem.');
     });
 
     $('op-mode-toggle').addEventListener('click', () => {
@@ -2039,7 +2006,7 @@ applyTheme();
         clearOverlayCache();
         ensureHook();
         updateUI();
-        showToast('Modo cambiado. Mueve el mapa para actualizar.');
+        showToast('Đã đổi chế độ. Di chuyển bản đồ để cập nhật.');
     });
 
     $('op-autocap-toggle').addEventListener('click', () => {
@@ -2051,13 +2018,13 @@ applyTheme();
             if (!config.showOverlay) {
                 config.showOverlay = true;
                 keysToSave.push('showOverlay');
-                showToast('Set Position enabled. Overlay automatically turned ON.');
+                showToast('Đã bật Set Position. Overlay tự động BẬT.');
                 clearOverlayCache();
             } else {
-                showToast('Set Position mode enabled.');
+                showToast('Đã bật chế độ Set Position.');
             }
         } else {
-            showToast('Set Position mode disabled.');
+            showToast('Đã tắt chế độ Set Position.');
         }
         saveConfig(keysToSave);
         ensureHook();
@@ -2071,12 +2038,12 @@ applyTheme();
             if (!config.showOverlay) {
                 config.showOverlay = true;
                 keysToSave.push('showOverlay');
-                showToast('Superposición activada para mostrar errores.');
+                showToast('Đã bật overlay để hiển thị lỗi.');
             }
             if (config.overlayMode === 'original') {
                 config.overlayMode = 'minify';
                 keysToSave.push('overlayMode');
-                showToast("Modo cambiado a 'Minificado' para mostrar errores.");
+                showToast("Đã đổi sang chế độ 'Thu nhỏ' để hiện lỗi.");
             }
         }
         config.showErrors = enabling;
@@ -2084,7 +2051,7 @@ applyTheme();
         clearOverlayCache();
         ensureHook();
         updateUI();
-        showToast('Modo de errores actualizado. Mueve el mapa para ver cambios.');
+        showToast('Đã cập nhật chế độ hiển thị lỗi. Di chuyển bản đồ để xem thay đổi.');
     });
 
     document.querySelectorAll('.op-tab-btn').forEach(btn => {
@@ -2099,21 +2066,21 @@ applyTheme();
             console.error(e);
         }
     });
-    $('op-import-overlay').addEventListener('click', async () => { const text = prompt('Pega el JSON de la superposición (simple o array):'); if (!text) return; await importOverlayFromJSON(text); });
+    $('op-import-overlay').addEventListener('click', async () => { const text = prompt('Dán JSON của overlay (đơn hoặc mảng):'); if (!text) return; await importOverlayFromJSON(text); });
     $('op-export-overlay').addEventListener('click', () => exportActiveOverlayToClipboard());
 
     $('op-name').addEventListener('change', async (e) => {
         const ov = getActiveOverlay(); if (!ov) return;
         const desired = (e.target.value || '').trim() || 'Overlay';
-        if (config.overlays.some(o => o.id !== ov.id && (o.name || '').toLowerCase() === desired.toLowerCase())) { ov.name = uniqueName(desired); showToast(`Nombre en uso. Renombrado a "${ov.name}".`); } else { ov.name = desired; }
+        if (config.overlays.some(o => o.id !== ov.id && (o.name || '').toLowerCase() === desired.toLowerCase())) { ov.name = uniqueName(desired); showToast(`Tên đã được dùng. Đã đổi tên thành "${ov.name}".`); } else { ov.name = desired; }
         await saveConfig(['overlays']); rebuildOverlayListUI();
     });
 
     $('op-fetch').addEventListener('click', async () => {
-        const ov = getActiveOverlay(); if (!ov) { alert('No hay ninguna superposición activa seleccionada.'); return; }
-        if (ov.imageBase64) { alert('Esta superposición ya tiene una imagen. Crea una nueva para cambiarla.'); return; }
-        const url = $('op-image-url').value.trim(); if (!url) { alert('Ingresa un enlace de imagen primero.'); return; }
-        try { await setOverlayImageFromURL(ov, url); } catch (e) { console.error(e); alert('No se pudo cargar la imagen.'); }
+        const ov = getActiveOverlay(); if (!ov) { alert('Chưa có overlay nào đang được chọn.'); return; }
+        if (ov.imageBase64) { alert('Overlay này đã có ảnh. Hãy tạo overlay mới để đổi ảnh.'); return; }
+        const url = $('op-image-url').value.trim(); if (!url) { alert('Vui lòng nhập link ảnh trước.'); return; }
+        try { await setOverlayImageFromURL(ov, url); } catch (e) { console.error(e); alert('Không thể tải ảnh.'); }
     });
 
     const dropzone = $('op-dropzone');
@@ -2121,21 +2088,21 @@ applyTheme();
     $('op-file-input').addEventListener('change', async (e) => {
         const file = e.target.files && e.target.files[0]; e.target.value = ''; if (!file) return;
         const ov = getActiveOverlay(); if (!ov) return;
-        if (ov.imageBase64) { alert('Esta superposición ya tiene una imagen. Crea una nueva para cambiarla.'); return; }
-        try { await setOverlayImageFromFile(ov, file); } catch (err) { console.error(err); alert('No se pudo cargar la imagen local.'); }
+        if (ov.imageBase64) { alert('Overlay này đã có ảnh. Hãy tạo overlay mới để đổi ảnh.'); return; }
+        try { await setOverlayImageFromFile(ov, file); } catch (err) { console.error(err); alert('Không thể tải ảnh cục bộ.'); }
     });
     ['dragenter', 'dragover'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); dropzone.classList.add('drop-highlight'); }));
     ['dragleave', 'drop'].forEach(evt => dropzone.addEventListener(evt, (e) => { e.preventDefault(); e.stopPropagation(); if (evt === 'dragleave' && e.target !== dropzone) return; dropzone.classList.remove('drop-highlight'); }));
     dropzone.addEventListener('drop', async (e) => {
         const dt = e.dataTransfer; if (!dt) return; const file = dt.files && dt.files[0]; if (!file) return;
         const ov = getActiveOverlay(); if (!ov) return;
-        if (ov.imageBase64) { alert('Esta superposición ya tiene una imagen. Crea una nueva para cambiarla.'); return; }
-        try { await setOverlayImageFromFile(ov, file); } catch (err) { console.error(err); alert('No se pudo cargar la imagen arrastrada.'); }
+        if (ov.imageBase64) { alert('Overlay này đã có ảnh. Hãy tạo overlay mới để đổi ảnh.'); return; }
+        try { await setOverlayImageFromFile(ov, file); } catch (err) { console.error(err); alert('Không thể tải ảnh vừa kéo thả.'); }
     });
 
         const debouncedRefresh = debounce(() => {
         clearOverlayCache();
-        showToast('Posición actualizada. Mueve el mapa para ver el cambio.', 2000);
+        showToast('Đã cập nhật vị trí. Di chuyển bản đồ để thấy thay đổi.', 2000);
     }, 500);
 
     const debouncedSave = debounce(() => {
@@ -2168,19 +2135,19 @@ applyTheme();
             config.showErrors = false;
             saveConfig(['showErrors']);
             clearOverlayCache();
-            showToast('Modo de errores desactivado para ajustar la opacidad.');
+            showToast('Đã tắt chế độ hiển thị lỗi để chỉnh độ trong suốt.');
             updateUI();
         }
     });
     $('op-opacity-slider').addEventListener('change', async () => {
         await saveConfig(['overlays']);
         clearOverlayCache();
-        showToast('Opacidad guardada. Mueve el mapa para actualizar.');
+        showToast('Đã lưu độ trong suốt. Di chuyển bản đồ để cập nhật.');
     });
 
     $('op-download-overlay').addEventListener('click', () => {
         const ov = getActiveOverlay();
-        if (!ov || !ov.imageBase64) { showToast('No hay imagen para descargar.'); return; }
+        if (!ov || !ov.imageBase64) { showToast('Không có ảnh để tải xuống.'); return; }
         const a = document.createElement('a');
         a.href = ov.imageBase64;
         a.download = `${(ov.name || 'overlay').replace(/[^\w.-]+/g, '_')}.png`;
@@ -2189,13 +2156,13 @@ applyTheme();
     });
 
     $('op-open-cc').addEventListener('click', () => {
-        const ov = getActiveOverlay(); if (!ov || !ov.imageBase64) { showToast('No hay imagen para editar.'); return; }
+        const ov = getActiveOverlay(); if (!ov || !ov.imageBase64) { showToast('Không có ảnh để chỉnh sửa.'); return; }
         openCCModal(ov);
     });
 
     $('op-open-resize').addEventListener('click', () => {
         const ov = getActiveOverlay();
-        if (!ov || !ov.imageBase64) { showToast('No hay imagen para redimensionar.'); return; }
+        if (!ov || !ov.imageBase64) { showToast('Không có ảnh để đổi kích thước.'); return; }
         openRSModal(ov);
     });
 
@@ -2216,7 +2183,7 @@ applyTheme();
         }
 
         await saveConfig(keysToSave);
-        showToast(point ? `Haz clic en el lienzo para fijar el punto ${point}` : 'Selección cancelada.');
+        showToast(point ? `Bấm vào canvas để đặt điểm ${point}` : 'Đã hủy lựa chọn.');
         updateUI();
         ensureHook();
     };
@@ -2225,7 +2192,7 @@ applyTheme();
     $('op-copy-create').addEventListener('click', () => { createCanvasCopy(); });
     $('op-copy-preview-toggle').addEventListener('click', () => {
         if (!config.copyPointA || !config.copyPointB) {
-            showToast('Primero debes fijar los puntos A y B.');
+            showToast('Bạn cần đặt điểm A và B trước.');
             return;
         }
         const activating = !config.copyPreviewActive;
@@ -2235,7 +2202,7 @@ applyTheme();
             overlayStateBeforePreview = config.showOverlay;
             if (config.showOverlay) {
                 config.showOverlay = false;
-                showToast('Overlay desactivado para mostrar la previsualización.');
+                showToast('Đã tắt Overlay để hiển thị bản xem trước.');
             }
         } else {
             config.showOverlay = overlayStateBeforePreview;
@@ -2344,7 +2311,7 @@ applyTheme();
             } else {
                 let listHTML = '<ul class="op-donators-list">';
                 if (DONATORS.length === 0) {
-                    listHTML += '<li class="op-donator-item-empty">Aún no hay donaciones. ¡Sé el primero!</li>';
+                    listHTML += '<li class="op-donator-item-empty">Chưa có ai donate. Hãy là người đầu tiên!</li>';
                 } else {
                     DONATORS.forEach(d => {
                         listHTML += `<li class="op-donator-item"><span class="op-donator-name">${d.name}</span><span class="op-donator-contribution">${d.contribution}</span></li>`;
@@ -2460,7 +2427,7 @@ async function updateOverlayProgress() {
     if (mainActions) mainActions.style.display = 'none';
 
     if (!ov || !ov.imageBase64 || !ov.pixelUrl) {
-        panelContent.innerHTML = `<span class="op-muted" style="text-align: center; padding: 20px 0;">Selecciona un overlay con imagen y ancla fijada.</span>`;
+        panelContent.innerHTML = `<span class="op-muted" style="text-align: center; padding: 20px 0;">Chọn một overlay đã có ảnh và đặt mốc neo.</span>`;
         totalPercentageEl.textContent = 'N/A';
         return;
     }
@@ -2487,7 +2454,7 @@ async function updateOverlayProgress() {
         }
 
         if (totalNeeded === 0) {
-            panelContent.innerHTML = `<span class="op-muted" style="text-align: center; padding: 20px 0;">La imagen está vacía.</span>`;
+            panelContent.innerHTML = `<span class="op-muted" style="text-align: center; padding: 20px 0;">Ảnh đang trống.</span>`;
             return;
         }
 
@@ -2594,9 +2561,9 @@ async function updateOverlayProgress() {
         document.getElementById('op-ca-mark-none').onclick = () => panelContent.querySelectorAll('.op-ca-filter-check').forEach(cb => cb.checked = false);
 
     } catch (error) {
-        console.error("Error al actualizar progreso del overlay:", error);
-        panelContent.innerHTML = `<span class="op-muted op-danger-text" style="text-align: center; padding: 20px 0;">Error al procesar la imagen.</span>`;
-        totalPercentageEl.textContent = 'Error';
+        console.error("Lỗi khi cập nhật tiến độ overlay:", error);
+        panelContent.innerHTML = `<span class="op-muted op-danger-text" style="text-align: center; padding: 20px 0;">Lỗi khi xử lý ảnh.</span>`;
+        totalPercentageEl.textContent = 'Lỗi';
     }
 }
 
@@ -2718,7 +2685,7 @@ async function updateOverlayProgress() {
     const coords = ov.pixelUrl ? extractPixelCoords(ov.pixelUrl) : { chunk1: '-', chunk2: '-', posX: '-', posY: '-' };
     $('op-coord-display').textContent = ov.pixelUrl
       ? `Ref: chunk ${coords.chunk1}/${coords.chunk2} en (${coords.posX}, ${coords.posY})`
-      : `No se ha fijado ancla. Activa "Fijar ancla" y haz clic en un píxel.`;
+      : `Chưa đặt mốc neo. Bật "Đặt vị trí" rồi bấm vào một pixel.`;
 
     $('op-opacity-slider').value = String(ov.opacity);
     $('op-opacity-value').textContent = Math.round(ov.opacity * 100) + '%';
@@ -2729,38 +2696,38 @@ async function updateOverlayProgress() {
 
     const cMode = ov.colorMode || 'standard';
     $('op-color-mode').value = cMode;
-    const textMap = { 'standard': 'Estándar (Recomendado)', 'enhanced': 'Mejorado (Pixel Art)', 'photorealistic': 'Fotorealista (Dithering)' };
+    const textMap = { 'standard': t('modeStd'), 'enhanced': t('modeEnh'), 'photorealistic': t('modePho') };
     const textEl = $('op-mode-text');
-    if (textEl) textEl.textContent = textMap[cMode] || 'Estándar (Recomendado)';
+    if (textEl) textEl.textContent = textMap[cMode] || t('modeStd');
     document.querySelectorAll('.op-option').forEach(opt => opt.classList.toggle('selected', opt.dataset.value === cMode));
   }
   function updateCopierUI() {
     const $ = (id) => document.getElementById(id);
 
     const { copyPointA: pA, copyPointB: pB, isSettingCopyPoint, copyPreviewActive } = config;
-    $('op-copy-a-coords').textContent = pA ? `(${pA.absX}, ${pA.absY})` : 'No fijado';
-    $('op-copy-b-coords').textContent = pB ? `(${pB.absX}, ${pB.absY})` : 'No fijado';
+    $('op-copy-a-coords').textContent = pA ? `(${pA.absX}, ${pA.absY})` : 'Chưa đặt';
+    $('op-copy-b-coords').textContent = pB ? `(${pB.absX}, ${pB.absY})` : 'Chưa đặt';
 
     const btnA = $('op-copy-set-a');
     const btnB = $('op-copy-set-b');
     btnA.classList.toggle('op-danger', isSettingCopyPoint === 'A');
     btnB.classList.toggle('op-danger', isSettingCopyPoint === 'B');
-    btnA.textContent = isSettingCopyPoint === 'A' ? 'Fijando A...' : 'Fijar Punto A';
-    btnB.textContent = isSettingCopyPoint === 'B' ? 'Fijando B...' : 'Fijar Punto B';
+    btnA.textContent = isSettingCopyPoint === 'A' ? 'Đang đặt A...' : 'Đặt điểm A';
+    btnB.textContent = isSettingCopyPoint === 'B' ? 'Đang đặt B...' : 'Đặt điểm B';
 
     const info = $('op-copy-info');
     const canCreate = pA && pB;
     if (canCreate) {
         const W = Math.abs(pA.absX - pB.absX) + 1;
         const H = Math.abs(pA.absY - pB.absY) + 1;
-        info.textContent = `Tamaño seleccionado: ${W} x ${H} píxeles.`;
+        info.textContent = `Kích thước đã chọn: ${W} x ${H} pixel.`;
     } else {
-        info.textContent = 'Selecciona dos puntos para definir un área.';
+        info.textContent = 'Chọn hai điểm để xác định khu vực.';
     }
 
     const previewBtn = $('op-copy-preview-toggle');
     previewBtn.disabled = !canCreate;
-    previewBtn.textContent = copyPreviewActive ? 'Ocultar Área' : 'Visualizar Área';
+    previewBtn.textContent = copyPreviewActive ? 'Ẩn khu vực' : 'Xem trước khu vực';
     previewBtn.classList.toggle('op-danger', copyPreviewActive);
 
     $('op-copy-create').disabled = !copyPreviewActive;
@@ -2806,16 +2773,16 @@ function updateUI() {
     toggle.title = collapsed ? 'Expandir' : 'Plegar';
 
     const showOverlayBtn = $('op-show-overlay-toggle');
-    showOverlayBtn.textContent = `${t('overlayBtn')}: ${config.showOverlay ? 'ON' : 'OFF'}`;
+    showOverlayBtn.textContent = `${t('overlayBtn')}: ${config.showOverlay ? 'BẬT' : 'TẮT'}`;
     showOverlayBtn.classList.toggle('op-danger', !config.showOverlay);
 
     const modeBtn = $('op-mode-toggle');
-    const modeMap = { behind: 'Behind', above: 'Above', minify: `Minify ◻`, original: 'Original' };
-    modeBtn.textContent = `${t('modeBtn')}: ${modeMap[config.overlayMode] || 'Original'}`;
+    const modeMap = { behind: 'Phía sau', above: 'Phía trên', minify: `Thu nhỏ ◻`, original: 'Gốc' };
+    modeBtn.textContent = `${t('modeBtn')}: ${modeMap[config.overlayMode] || 'Gốc'}`;
     const autoBtn = $('op-autocap-toggle');
-    autoBtn.textContent = `${t('posBtn')}: ${config.autoCapturePixelUrl ? 'ON' : 'OFF'}`;
+    autoBtn.textContent = `${t('posBtn')}: ${config.autoCapturePixelUrl ? 'BẬT' : 'TẮT'}`;
     const showErrorBtn = $('op-show-errors-toggle');
-    showErrorBtn.textContent = `${t('errorsBtn')}: ${config.showErrors ? 'ON' : 'OFF'}`;
+    showErrorBtn.textContent = `${t('errorsBtn')}: ${config.showErrors ? 'BẬT' : 'TẮT'}`;
     showErrorBtn.classList.toggle('op-danger', !!config.showErrors);
 
     setActiveTab(config.activeTab);
@@ -2828,7 +2795,7 @@ function updateUI() {
     const ov = getActiveOverlay();
     const canExport = !!(ov && ov.imageUrl && !ov.isLocal);
     exportBtn.disabled = !canExport;
-    exportBtn.title = canExport ? 'Exportar superposición activa a JSON' : 'Exportación desactivada para imágenes locales';
+    exportBtn.title = canExport ? 'Xuất overlay đang chọn ra JSON' : 'Không thể xuất ảnh cục bộ';
 
     const analyzeBtn = $('op-analyze-colors-btn');
     if(analyzeBtn) analyzeBtn.classList.toggle('op-danger', config.isColorPanelVisible);
@@ -2892,10 +2859,10 @@ function updateUI() {
 
     modal.innerHTML = `
       <div class="op-cc-header" id="op-cc-header">
-        <div class="op-cc-title">Ajuste de Color</div>
+        <div class="op-cc-title">Chỉnh màu</div>
         <div class="op-row" style="gap:6px;">
-          <button class="op-button op-cc-pill" id="op-cc-realtime" title="Activa/Desactiva el cálculo en tiempo real al cambiar la paleta.">En vivo: OFF</button>
-          <button class="op-cc-close" id="op-cc-close" title="Cerrar">✕</button>
+          <button class="op-button op-cc-pill" id="op-cc-realtime" title="Bật/Tắt tính toán theo thời gian thực khi đổi bảng màu.">Thời gian thực: TẮT</button>
+          <button class="op-cc-close" id="op-cc-close" title="Đóng">✕</button>
         </div>
       </div>
 
@@ -2903,24 +2870,24 @@ function updateUI() {
         <div class="op-cc-preview-wrap" style="grid-area: preview;">
           <canvas id="op-cc-preview" class="op-cc-canvas"></canvas>
           <div class="op-cc-zoom">
-            <button class="op-icon-btn" id="op-cc-zoom-out" title="Alejar">−</button>
-            <button class="op-icon-btn" id="op-cc-zoom-in" title="Acercar">+</button>
+            <button class="op-icon-btn" id="op-cc-zoom-out" title="Thu nhỏ">−</button>
+            <button class="op-icon-btn" id="op-cc-zoom-in" title="Phóng to">+</button>
           </div>
         </div>
 
         <div class="op-cc-controls" style="grid-area: controls;">
           <div class="op-cc-palette" id="op-cc-free">
             <div class="op-row space">
-              <label>Colores Gratuitos</label>
-              <button class="op-button" id="op-cc-free-toggle" title="Seleccionar/Deseleccionar todos los colores de esta paleta.">Desmarcar todo</button>
+              <label>Màu Miễn Phí</label>
+              <button class="op-button" id="op-cc-free-toggle" title="Chọn/Bỏ chọn tất cả màu trong bảng màu này.">Bỏ chọn tất cả</button>
             </div>
             <div id="op-cc-free-grid" class="op-cc-grid"></div>
           </div>
 
           <div class="op-cc-palette" id="op-cc-paid">
             <div class="op-row space">
-              <label>Colores de Pago (2000💧)</label>
-              <button class="op-button" id="op-cc-paid-toggle" title="Seleccionar/Deseleccionar todos los colores de esta paleta.">Marcar todo</button>
+              <label>Màu Trả Phí (2000💧)</label>
+              <button class="op-button" id="op-cc-paid-toggle" title="Chọn/Bỏ chọn tất cả màu trong bảng màu này.">Chọn tất cả</button>
             </div>
             <div id="op-cc-paid-grid" class="op-cc-grid"></div>
           </div>
@@ -2930,9 +2897,9 @@ function updateUI() {
       <div class="op-cc-footer">
         <div class="op-cc-ghost" id="op-cc-meta"></div>
         <div class="op-cc-actions">
-          <button class="op-button" id="op-cc-recalc" title="Recalcular el mapeo de colores">Calcular</button>
-          <button class="op-button" id="op-cc-apply" title="Aplicar cambios a la superposición">Aplicar</button>
-          <button class="op-button" id="op-cc-cancel" title="Cerrar sin guardar">Cancelar</button>
+          <button class="op-button" id="op-cc-recalc" title="Tính lại ánh xạ màu">Tính lại</button>
+          <button class="op-button" id="op-cc-apply" title="Áp dụng thay đổi vào overlay">Áp dụng</button>
+          <button class="op-button" id="op-cc-cancel" title="Đóng mà không lưu">Hủy</button>
         </div>
       </div>
     `;
@@ -2971,7 +2938,7 @@ function updateUI() {
 
     cc.realtimeBtn.addEventListener('click', async () => {
       cc.realtime = !cc.realtime;
-      cc.realtimeBtn.textContent = `En vivo: ${cc.realtime ? 'ON' : 'OFF'}`;
+      cc.realtimeBtn.textContent = `Thời gian thực: ${cc.realtime ? 'BẬT' : 'TẮT'}`;
       cc.realtimeBtn.classList.toggle('op-danger', cc.realtime);
       config.ccRealtime = cc.realtime; await saveConfig(['ccRealtime']);
       if (cc.realtime && cc.isStale) recalcNow();
@@ -2987,17 +2954,17 @@ function updateUI() {
     cc.applyBtn.addEventListener('click', async () => {
       const ov = cc.overlay; if (!ov) return;
       const activePalette = getActivePalette();
-      if (activePalette.length === 0) { showToast('Selecciona al menos un color.'); return; }
+      if (activePalette.length === 0) { showToast('Chọn ít nhất một màu.'); return; }
       if (cc.isStale) recalcNow();
-      if (!cc.processedCanvas) { showToast('No hay nada que aplicar.'); return; }
+      if (!cc.processedCanvas) { showToast('Không có gì để áp dụng.'); return; }
       if (cc.processedCanvas.width >= MAX_OVERLAY_DIM || cc.processedCanvas.height >= MAX_OVERLAY_DIM) {
-        showToast(`La imagen es demasiado grande para aplicar (debe ser < ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM}).`); return;
+        showToast(`Ảnh quá lớn để áp dụng (phải nhỏ hơn ${MAX_OVERLAY_DIM}×${MAX_OVERLAY_DIM}).`); return;
       }
       const dataUrl = cc.processedCanvas.toDataURL('image/png');
       ov.imageBase64 = dataUrl; ov.imageUrl = null; ov.isLocal = true;
       await saveConfig(['overlays']); clearOverlayCache(); ensureHook(); updateUI();
       const uniqueColors = Object.keys(cc.lastColorCounts).length;
-      showToast(`Superposición actualizada (${cc.processedCanvas.width}×${cc.processedCanvas.height}, ${uniqueColors} colores).`);
+      showToast(`Đã cập nhật overlay (${cc.processedCanvas.width}×${cc.processedCanvas.height}, ${uniqueColors} màu).`);
       closeCCModal();
     });
 
@@ -3022,7 +2989,7 @@ function updateUI() {
 
     function markStale() {
       cc.isStale = true;
-      cc.meta.textContent = cc.meta.textContent.replace(/ \| Estado: .+$/, '') + ' | Estado: pendiente de recálculo';
+      cc.meta.textContent = cc.meta.textContent.replace(/ \| Trạng thái: .+$/, '') + ' | Trạng thái: đang chờ tính lại';
     }
     async function recalcNow() {
       await processImage();
@@ -3038,7 +3005,7 @@ function updateUI() {
     document.body.classList.add('op-scroll-lock');
     cc.zoom = Number(config.ccZoom) || 1.0;
     cc.realtime = !!config.ccRealtime;
-    cc.realtimeBtn.textContent = `En vivo: ${cc.realtime ? 'ON' : 'OFF'}`;
+    cc.realtimeBtn.textContent = `Thời gian thực: ${cc.realtime ? 'BẬT' : 'TẮT'}`;
     cc.realtimeBtn.classList.toggle('op-danger', cc.realtime);
     const img = new Image();
     img.onload = async () => {
@@ -3182,8 +3149,8 @@ function updateUI() {
     if (!cc.sourceImageData) { cc.meta.textContent = ''; return; }
     const w = cc.sourceImageData.width, h = cc.sourceImageData.height;
     const colorsUsed = Object.keys(cc.lastColorCounts||{}).length;
-    const status = cc.isStale ? 'pendiente de recálculo' : 'actualizado';
-    cc.meta.textContent = `Tamaño: ${w}×${h} | Zoom: ${cc.zoom.toFixed(2)}× | Colores: ${colorsUsed} | Estado: ${status}`;
+    const status = cc.isStale ? 'đang chờ tính lại' : 'đã cập nhật';
+    cc.meta.textContent = `Kích thước: ${w}×${h} | Thu phóng: ${cc.zoom.toFixed(2)}× | Số màu: ${colorsUsed} | Trạng thái: ${status}`;
   }
 
   function renderPaletteGrid() {
@@ -3229,8 +3196,8 @@ function updateUI() {
   }
 
   function updateMasterButtons() {
-    cc.freeToggle.textContent = isAllFreeActive() ? 'Desmarcar todo' : 'Marcar todo';
-    cc.paidToggle.textContent = isAllPaidActive() ? 'Desmarcar todo' : 'Marcar todo';
+    cc.freeToggle.textContent = isAllFreeActive() ? 'Bỏ chọn tất cả' : 'Chọn tất cả';
+    cc.paidToggle.textContent = isAllPaidActive() ? 'Bỏ chọn tất cả' : 'Chọn tất cả';
   }
   function isAllFreeActive() { return DEFAULT_FREE_KEYS.every(k => cc.selectedFree.has(k)); }
   function isAllPaidActive() {
@@ -3263,28 +3230,28 @@ function updateUI() {
 
     modal.innerHTML = `
       <div class="op-rs-header" id="op-rs-header">
-        <div class="op-rs-title">Redimensionar Superposición</div>
-        <button class="op-rs-close" id="op-rs-close" title="Cerrar">✕</button>
+        <div class="op-rs-title">Đổi kích thước Overlay</div>
+        <button class="op-rs-close" id="op-rs-close" title="Đóng">✕</button>
       </div>
       <div class="op-rs-body" style="padding: 15px;">
           <div class="op-rs-row" style="margin-bottom: 8px;">
-            <label style="width:110px;">Original</label>
+            <label style="width:110px;">Gốc</label>
             <input type="text" class="op-input" id="op-rs-orig" disabled>
           </div>
           <div class="op-rs-row" style="margin-bottom: 8px;">
-            <label style="width:110px;">Ancho</label>
+            <label style="width:110px;">Rộng</label>
             <input type="number" min="1" step="1" class="op-input" id="op-rs-w">
           </div>
           <div class="op-rs-row" style="margin-bottom: 8px;">
-            <label style="width:110px;">Alto</label>
+            <label style="width:110px;">Cao</label>
             <input type="number" min="1" step="1" class="op-input" id="op-rs-h">
           </div>
           <div class="op-rs-row" style="margin-bottom: 12px;">
             <input type="checkbox" id="op-rs-lock" checked>
-            <label for="op-rs-lock">Bloquear relación de aspecto</label>
+            <label for="op-rs-lock">Khóa tỉ lệ khung hình</label>
           </div>
           <div class="op-rs-row" style="gap:6px; flex-wrap:wrap; margin-bottom: 12px;">
-            <label style="width:110px;">Escalado Rápido</label>
+            <label style="width:110px;">Chỉnh tỉ lệ nhanh</label>
             <button class="op-button" id="op-rs-double">2x</button>
             <button class="op-button" id="op-rs-onex">1x</button>
             <button class="op-button" id="op-rs-half">0.5x</button>
@@ -3292,20 +3259,20 @@ function updateUI() {
           </div>
           <div class="op-rs-preview-wrap" style="height: 200px; display: flex; gap: 10px; background: var(--op-bg); border-radius: 8px; padding: 10px;">
               <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
-                  <span style="font-size:11px; color:var(--op-muted);">Original</span>
+                  <span style="font-size:11px; color:var(--op-muted);">Gốc</span>
                   <canvas id="op-rs-sim-orig" style="max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;"></canvas>
               </div>
               <div style="flex:1; display:flex; flex-direction:column; align-items:center;">
-                  <span style="font-size:11px; color:var(--op-muted);">Resultado</span>
+                  <span style="font-size:11px; color:var(--op-muted);">Kết quả</span>
                   <canvas id="op-rs-sim-new" style="max-width:100%; max-height:100%; object-fit:contain; image-rendering:pixelated;"></canvas>
               </div>
           </div>
       </div>
       <div class="op-rs-footer">
-        <div class="op-cc-ghost" id="op-rs-meta">Dimensiones correctas.</div>
+        <div class="op-cc-ghost" id="op-rs-meta">Kích thước hợp lệ.</div>
         <div class="op-cc-actions">
-          <button class="op-button" id="op-rs-apply">Aplicar</button>
-          <button class="op-button" id="op-rs-cancel">Cancelar</button>
+          <button class="op-button" id="op-rs-apply">Áp dụng</button>
+          <button class="op-button" id="op-rs-cancel">Hủy</button>
         </div>
       </div>
     `;
@@ -3331,7 +3298,7 @@ function updateUI() {
       const W = parseInt(rs.w.value||'0',10), H = parseInt(rs.h.value||'0',10);
       const ok = Number.isFinite(W) && Number.isFinite(H) && W>0 && H>0;
       const limit = (W >= MAX_OVERLAY_DIM || H >= MAX_OVERLAY_DIM);
-      rs.meta.textContent = ok ? (limit ? `Objetivo: ${W}×${H} (Límite: < ${MAX_OVERLAY_DIM})` : `Objetivo: ${W}×${H} (OK)`) : 'Dimensiones inválidas.';
+      rs.meta.textContent = ok ? (limit ? `Mục tiêu: ${W}×${H} (Giới hạn: < ${MAX_OVERLAY_DIM})` : `Mục tiêu: ${W}×${H} (OK)`) : 'Kích thước không hợp lệ.';
       rs.applyBtn.disabled = (!ok || limit);
     };
 
@@ -3384,11 +3351,11 @@ function updateUI() {
     rs.applyBtn.addEventListener('click', async () => {
       if (!rs.ov) return;
       const W = parseInt(rs.w.value||'0',10), H = parseInt(rs.h.value||'0',10);
-      if (W<=0 || H<=0 || W>=MAX_OVERLAY_DIM || H>=MAX_OVERLAY_DIM) { showToast('Dimensiones inválidas'); return; }
+      if (W<=0 || H<=0 || W>=MAX_OVERLAY_DIM || H>=MAX_OVERLAY_DIM) { showToast('Kích thước không hợp lệ'); return; }
       try {
         await resizeOverlayImage(rs.ov, W, H);
-        closeRSModal(); showToast(`Redimensionado a ${W}×${H}.`);
-      } catch (e) { showToast('Fallo al aplicar.'); }
+        closeRSModal(); showToast(`Đã đổi kích thước thành ${W}×${H}.`);
+      } catch (e) { showToast('Áp dụng thất bại.'); }
     });
 
     rs._drawPreviews = drawPreviews;
