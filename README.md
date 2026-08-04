@@ -109,8 +109,8 @@ Dự án được phát hành theo giấy phép **GPLv3** và là phần mềm m
 
 Quá trình phát triển, bảo trì và Việt hóa tiêu tốn khá nhiều thời gian và công sức. Nếu dự án này hữu ích với bạn hoặc cộng đồng của bạn, hãy cân nhắc ủng hộ:
 
-* ** Tác giả gốc:** [SrCratier]([SrCratier](https://github.com/SrCratier))
-* ** Người Việt hóa:** [CheemsGalaxy]([CheemsGalaxy](https://github.com/CheemsGalaxy))
+* **Tác giả gốc:** [SrCratier](https://github.com/SrCratier)
+* **Người Việt hóa:** [CheemsGalaxy](https://github.com/CheemsGalaxy)
 
 > Thông tin ủng hộ tác giả gốc (Binance/PayPal) cùng danh sách những người đã đóng góp có sẵn trong **Cài đặt (⚙️)** của script.
 
