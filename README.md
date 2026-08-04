@@ -94,15 +94,41 @@ Các nút trên đầu panel điều khiển cách overlay hiển thị:
 
 ---
 
-## 5. Hỗ trợ & Lời cảm ơn
+## 5.  Hỗ trợ & Lời cảm ơn
 
-Trong panel chính, bấm nút **Cài đặt (⚙️)** để:
-* Đổi giao diện **Sáng** / **Tối**.
-* Chỉnh độ trong suốt panel.
+Trong giao diện chính, nhấn nút **Cài đặt (⚙️)** để:
 
-Dự án này mã nguồn mở (GPLv3), việc bảo trì và Việt hóa cũng tốn khá nhiều thời gian. Nếu script giúp ích cho bạn hoặc cộng đồng vẽ tranh của bạn, hãy cân nhắc ủng hộ tác giả gốc.
+*  Chuyển đổi giữa chế độ **Sáng** và **Tối**.
+*  Điều chỉnh độ trong suốt của cửa sổ panel.
 
-Thông tin donate (Binance/PayPal) và danh sách người đã ủng hộ nằm trong menu Cài đặt của script.
+---
+
+###  Lời cảm ơn
+
+Dự án được phát hành theo giấy phép **GPLv3** và là phần mềm mã nguồn mở.
+
+Quá trình phát triển, bảo trì và Việt hóa tiêu tốn khá nhiều thời gian và công sức. Nếu dự án này hữu ích với bạn hoặc cộng đồng của bạn, hãy cân nhắc ủng hộ:
+
+* ** Tác giả gốc:** https://github.com/SrCratier
+* ** Người Việt hóa:** https://github.com/CheemsGalaxy
+
+> Thông tin ủng hộ tác giả gốc (Binance/PayPal) cùng danh sách những người đã đóng góp có sẵn trong **Cài đặt (⚙️)** của script.
+
+---
+
+<div align="center">
+
+## ☕ Ủng hộ người Việt hóa
+
+Nếu bạn muốn ủng hộ công sức dịch thuật và bảo trì phiên bản tiếng Việt, bạn có thể donate qua **MoMo**.
+
+[![Donate MoMo](https://img.shields.io/badge/Donate-MoMo-pink?style=for-the-badge\&logo=momo\&logoColor=white)](https://me.momo.vn/chimchimkl28)
+
+<img src="https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=https://me.momo.vn/chimchimkl28" alt="MoMo QR Code" width="180"/>
+
+**Xin chân thành cảm ơn sự ủng hộ của bạn! ❤️**
+
+</div>
 
 ---
 
