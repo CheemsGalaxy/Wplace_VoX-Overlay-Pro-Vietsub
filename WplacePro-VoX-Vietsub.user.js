@@ -4,8 +4,6 @@
 // @version      5.3.0-vi
 // @description  [Vietsub by CheemsGalaxy] Overlays tiles on wplace.live. Can also resize, and color-match your overlay to wplace's palette. Make sure to comply with the site's Terms of Service, and rules! This script is not affiliated with Wplace.live in any way, use at your risk. This script is not affiliated with TamperMonkey. The author of this userscript is not responsible for any damages, issues, loss of data, or punishment that may occur as a result of using this script. This script is provided "as is" under GPLv3.
 // @author       shinkonet (Modificado por @SrCratier), Vietsub by CheemsGalaxy
-// @updateURL    https://raw.githubusercontent.com/CheemsGalaxy/Wplace_VoX-Overlay-Pro-Vietsub/main/WplacePro-VoX-Vietsub.user.js
-// @downloadURL  https://raw.githubusercontent.com/CheemsGalaxy/Wplace_VoX-Overlay-Pro-Vietsub/main/WplacePro-VoX-Vietsub.user.js
 // @match        https://wplace.live/*
 // @license      GPLv3
 // @grant        GM_setValue
@@ -1512,7 +1510,7 @@ panel.innerHTML = `
     <div class="op-ca-header" id="op-ca-header-drag">
         <span>Tiến độ màu</span>
         <div class="op-ca-settings-wrap">
-            <button class="op-ca-settings-btn" id="op-ca-settings-btn" title="Cài đặt Tiến độ">⚙️</button>
+            <button class="op-ca-settings-btn" id="op-ca-settings-btn" title="Cài đặt tiến độ">⚙️</button>
             <button class="op-ca-settings-btn" id="op-ca-toggle-collapse" title="Thu gọn/Mở rộng" style="margin-left: 5px;">▾</button>
         </div>
     </div>
@@ -1558,7 +1556,7 @@ panel.innerHTML = `
     caSettingsModal.id = 'op-ca-settings-modal';
     caSettingsModal.className = 'op-modal';
     caSettingsModal.innerHTML = `
-        <h3>Cài đặt Tiến độ</h3>
+        <h3>Cài đặt tiến độ</h3>
         <div class="op-ca-controls" style="display: flex; flex-direction: column; gap: 12px;">
             <div class="op-ca-control-row">
                 <label>Sắp xếp theo số lượng</label>
@@ -2542,16 +2540,16 @@ async function updateOverlayProgress() {
             ov.savedFilters = colors;
             await saveConfig(['overlays']);
             clearOverlayCache();
-            showToast(message + ' Mueve el mapa para ver los cambios.');
+            showToast(message + ' Di chuyển bản đồ để xem thay đổi.');
         };
 
         document.getElementById('op-ca-apply-filter').onclick = () => {
             const selected = Array.from(panelContent.querySelectorAll('.op-ca-filter-check:checked')).map(cb => cb.dataset.colorKey);
-            applyAndRefresh(true, selected, `Filtro aplicado. Mostrando ${selected.length} colores.`);
+            applyAndRefresh(true, selected, `Đã áp dụng bộ lọc. Đang hiển thị ${selected.length} màu.`);
         };
         document.getElementById('op-ca-show-all').onclick = () => {
             panelContent.querySelectorAll('.op-ca-filter-check').forEach(cb => cb.checked = true);
-            applyAndRefresh(false, [], 'Filtro eliminado. Mostrando todos los colores.');
+            applyAndRefresh(false, [], 'Đã xóa bộ lọc. Đang hiển thị tất cả các màu.');
         };
         document.getElementById('op-ca-mark-available').onclick = () => {
             const availableSet = new Set(colorsArray.filter(c => c.isAvailable).map(c => c.key));
