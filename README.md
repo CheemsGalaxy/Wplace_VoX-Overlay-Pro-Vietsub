@@ -60,9 +60,9 @@ Các nút trên đầu panel điều khiển cách overlay hiển thị:
     * *Gốc:* Tạm ẩn overlay để xem bản đồ thật.
 * **Hiện lỗi (BẬT/TẮT):** Tô sáng bằng màu tương phản những pixel trên bản đồ chưa khớp với thiết kế của bạn.
 
-> **💡 Mẹo hiệu năng:** Nếu vừa đổi độ trong suốt, vị trí, hoặc áp filter mà chưa thấy cập nhật, chỉ cần di chuyển bản đồ một chút hoặc đặt thử 1 pixel để màn hình refresh lại.
+> **💡 Mẹo:** Nếu vừa đổi độ trong suốt, vị trí, hoặc áp filter mà chưa thấy cập nhật, chỉ cần di chuyển bản đồ một chút hoặc đặt thử 1 pixel để màn hình refresh lại.
 
-![Ảnh minh họa](EJEMPLOS.png)
+![Ảnh minh họa](EXAMPLE.png)
 
 ---
 
